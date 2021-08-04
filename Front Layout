@@ -1,0 +1,2595 @@
+@inject DepartmentService _DepartmentService
+@inject VoucherService _VoucherService
+@inject ProductService _ProductService
+@inject ProductFavoriteService _ProductFavoriteService
+@inject ProductComparatorService _ProductComparatorService
+@inject RecentlyVisitedProductService _RecentlyVisitedProductService
+@inject ShoppingCartService _ShoppingCartService
+@inject UserSearchService _UserSearchService
+@inject ProductCategoryService _ProductCategoryService
+@inject HostPageService _HostPageService
+@inject BaseService _SharedService
+@inject ZoneService _ZoneService
+@inject WebsiteDBSettingService _WebsiteDBSettingService
+@inject UserNotificationService _UserNotificationService
+@inject IJSRuntime _JsRuntime
+@inject IStringLocalizer<SharedResource> _SharedResource
+@inject NavigationManager _NavigationManager
+@inject AuthenticationStateProvider _AuthenticationStateProvider
+@implements IDynamicLayout
+@inherits LayoutComponentBase
+@inject SignInManager<ApplicationUser>  _SignInManager
+@inject ApplicationUserService _ApplicationUserService
+@inject IOptions<WebSiteSettings> _Settings
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+@inject IMemoryCache _MemoryCache
+@using Microsoft.AspNetCore.DataProtection;
+@inject IDataProtectionProvider _ProviderProtector;
+@using Microsoft.AspNetCore.SignalR.Client
+@implements IAsyncDisposable
+
+@*<CssLoader Src="/css/sitegeneral" Id="MainLayout" />*@
+@*<CssLoader Src="/css/responsivegeneral" Id="MainLayoutResp" />*@
+<CssLoader Src="/js/OwlCarousel2/dist/assets/owl.carousel.min.css" Id="slickcssowl" />
+<CssLoader Src="/js/OwlCarousel2/dist/assets/owl.theme.default.min.css" Id="slickcssowltheme" />
+<CssLoader Src="/js/lightbox2-master/dist/css/lightbox.min.css" Id="lightboxcss" />
+<ScriptLoader Src="/js/OwlCarousel2/dist/owl.carousel.min.js" IsFooter="true" IsDisposable="false" OnChildLoaded="@(() => IsScriptSlickLoaded = true)" />
+<ScriptLoader Src="/js/lightbox2-master/dist/js/lightbox.min.js" IsFooter="true" IsDisposable="false" OnChildLoaded="@(() => IsScriptLightBoxLoaded = true)" />
+<header>
+    <div>
+        <div class="header1" style="padding: 5px; font-size: 15px; border-bottom: solid 1px #e4e4e4;">
+            <div class="container-fluid">
+
+                <div class="row" style=" justify-content: space-between; ">
+                    <div class="col">
+                        @((MarkupString)Zones?.Where(p => p.ZoneType?.ZoneTypeAction == ZoneTypeAction.IsTop)?.FirstOrDefault()?.Description)
+                    </div>
+                    @if (_Settings.Value.HasCultures)
+                    {
+                        <div class="col-auto d-flex  align-self-end" style="display: flex;justify-content: flex-end!important;">
+                            <nav class="CultureNav navbar  navbar-light  navbar-expand-lg " style="padding: 0 ; height: 27px;">
+                                <div id="navbarSupportedContent">
+                                    <ul class="navbar-nav mr-auto">
+                                        <li class="@($"nav-item dropdown {ShowCulture}")  ">
+                                            <a class="nav-link dropdown-toggle" style="padding: 0 5px; color: rgba(0, 0, 0, 0.78); font-size: 13px;" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="@AreaExpandedCulture">
+                                                @*@_SharedResource["Culture"]*@
+                                                @(Cultures?.FirstOrDefault(p => p.CultureID == _MainApp.PageState.CultureID)?.Title)
+                                                <ImageLoader Src="@(Cultures?.FirstOrDefault(p => p.CultureID == _MainApp?.PageState?.CultureID)?.ImageUrl)" width="20" class="lazyload" loading="lazy" height="20"  />
+                                            </a>
+
+                                            <ul class="@($"dropdown-menu {ShowCulture}")" aria-labelledby="navbarDropdown" style="width:65px; list-style-type:none">
+                                                @foreach (var item in Cultures ?? new List<Culture>())
+                                                {
+                                                    <li>
+                                                        <NavLink class="dropdown-item" href="@item.HostPath">
+                                                            @item.Title
+                                                            <ImageLoader Src="@item.ImageUrl" width="20" style="width: 20px; height:20px"   height="20"  />
+                                                        </NavLink>
+                                                    </li>
+                                                }
+                                            </ul>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </nav>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+        <nav class="navbar" id="NavBarBrand" style="background-color: #fff; padding: .5rem 1rem;" @onfocusout="@(() =>  ButtonActiveNotification = "")">
+            <div class="container-fluid" style="display: flex; justify-content: space-between;">
+                <div class="d-flex" style="margin-left: -15px; display: flex;" @onfocusout="@(() => KeySuggestionsSearchBoxDiv = "display: none")">
+                    <div class="col-auto showonmobile900" style="display:none">
+                        <button class="ProdNavToggler navbar-toggler" type="button" @onclick="@(() => { if (ProductCategoriesToggle == "show") { ProductCategoriesToggle = ""; } else { ProductCategoriesToggle = "show"; } })" aria-controls="navbarTogglerProd" aria-expanded="false" aria-label="Toggle navigation">
+                            <ImageLoader Src="/images/apps.svg" style="width: 30px; height:30px" width="30" height="30"  />
+                        </button>
+                        <button class="DepNavToggler navbar-toggler" style="background: #e4e4e4;  padding: 5px; height: 41px;" type="button" @onclick="@(() => { if (DepartmentsToggle == "show") { DepartmentsToggle = ""; } else { DepartmentsToggle = "show"; } })" aria-controls="navbarTogglerDemo03" aria-expanded="false" aria-label="Toggle navigation">
+                            <ImageLoader Src="/images/reorder-three.svg" style="width: 30px; height:30px"  width="30" height="30"  />
+                        </button>
+                    </div>
+                    <div class="col-auto Logo">  @((MarkupString)Zones?.Where(p => p.ZoneType?.ZoneTypeAction == ZoneTypeAction.IsLogo)?.FirstOrDefault()?.Description)</div>
+                    <div class="col-auto   SearchTop " style="max-width:320px" tabindex="1" @onfocusin="@(() => KeySuggestionsSearchBoxDiv = "display: block")" @onfocusout="@(() => KeySuggestionsSearchBoxDiv = "display: none")">
+                        <a class="btnSearchMob"  style="border: 0;width: 35px; height: 35px; display: none; color: #000;  cursor: pointer">
+                            <span> <ImageLoader Src="/images/general/search-outline.svg" style="width: 30px" width="30" height="30" /></span>
+                        </a>
+                        <div class="SearchBox">
+                            <div style="position: relative;  height: 40px;">
+                                <a class="btnSearchCloseMob" onclick="$('.SearchBox').hide()" style="border: 0;width: 35px; height: 35px; display: none; color: #000; cursor: pointer"> <ion-icon name="close-outline" style="font-size: 29px"></ion-icon></a>
+                                <input id="Key" @bind-value="Key" @bind-value:event="oninput" @onkeyup="@(async (e) => { KeySuggestionsSearchBoxDiv = "display: block"; await OnKeyUpSearch(e); })" autocomplete="off" style="min-width: 290px;   padding: .375rem .75rem;" placeholder="@_SharedResource["Search"]" class="form-control" />
+                                <button @onclick="NavigateToSearch" class="btnSearch" style="border: 0; height: 35px; background-color: #fff; position: absolute; top: 1px; right: 10px;">  <ImageLoader Src="/images/general/search-outline.svg" style="width:24px" class="lazyload" /></button>
+                            </div>
+                            @if (KeySuggestions?.Count() > 0)
+                            {
+                                <div class="SearchSuggestions" style="@KeySuggestionsSearchBoxDiv" >
+                                    <ul>
+                                        @foreach (var item in KeySuggestions)
+                                        {
+                                            if (string.IsNullOrEmpty(item.Url))
+                                            {
+                                                <li> @item.Title</li>
+                                            }
+                                            else
+                                            {
+                                                <li><a href="@item.Url" @onclick:preventDefault="true" @onclick:stopPropagation="true"  @onmousedown="(() => { Key = item.Key; KeySuggestions = null; _NavigationManager.NavigateTo(item.Url); })"  >@item.Title</a></li>
+                                            }
+                                        }
+                                    </ul>
+                                    <button  @onclick="(() => { KeySuggestions = null; })" class="btn-sm btn-secondary">@_SharedResource["Close"]</button>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex align-items-end" style="display: flex; align-items: flex-end ">
+                    <div class="col-auto text-center">
+                        <AuthorizeView>
+                            <Authorized>
+                                <nav class="MyAccountNav navbar navbar-expand-lg navbar-light right-align" style=" padding: 0;">
+                                    <div id="navbarSupportedContent">
+                                        <ul class="navbar-nav mr-auto">
+                                            <li class="@($"nav-item dropdown {ShowMyAccount}")">
+                                                <a class="nav-link dropdown-toggle" style="display: flex; justify-content: center; align-items: center; padding: 5px;" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="@AreaExpandedMyAccount">
+                                                    <div class="AccountInitials" style="background-color: #343a40; width: 30px; height: 30px; border-radius: 50px;line-height: 31px; color: #fff"> @ApplicationUser?.Initials</div>
+                                                    <span class="AccountName" style="color: rgba(0, 0, 0, 0.78); font-size: 16px;"> @((MarkupString)"&nbsp;") @_SharedResource["My Account"] @*@HostPageMyAccount?.Title*@</span>
+                                                </a>
+                                                <div class="@($"dropdown-menu {ShowMyAccount}")" aria-labelledby="navbarDropdown">
+
+                                                    <div style="margin: 5px 0; font-weight: bold"> @_SharedResource["Hello"]  @ApplicationUser?.SurnameFormatted20 !</div>
+                                                    <div class="btn-group">
+                                                        @if (@context.User.IsInRole(ApplicationRole.AdministratorRole) || @context.User.IsInRole(ApplicationRole.SubAdministratorRole))
+                                                        {
+                                                            <NavLink class="btn btn-link" href="@HostPageAdmin?.HostPath">@HostPageAdmin?.Title</NavLink>
+                                                        }
+                                                    </div>
+                                                    <div class="btn-group-vertical AccountLinksBox">
+                                                        @if (_Settings.Value.HasUsers)
+                                                        {
+                                                            @if (@context.User.IsInRole(ApplicationRole.UserRole))
+                                                            {
+                                                                foreach (var item in HostPagesAccount ?? new List<HostPage>())
+                                                                {
+                                                                    if (item.ActionType == HostPageActionType.IsMyAccountProductFeeds)
+                                                                    {
+                                                                        if (_Settings.Value.HasUserProductFeeds)
+                                                                        {
+                                                                            <NavLink class="btn btn-light" href="@item?.HostPath">@item?.Title</NavLink>
+                                                                        }
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <NavLink class="btn btn-light" href="@item?.HostPath">@item?.Title</NavLink>
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                        <button class="btn btn-light" @onclick="Logout"> <ion-icon name="exit-outline" style="font-size:20px"></ion-icon> Log out</button>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </nav>
+                            </Authorized>
+                            <NotAuthorized>
+                                @if (_Settings.Value.HasUsers || @context.User.IsInRole(ApplicationRole.AdministratorRole) || @context.User.IsInRole(ApplicationRole.SubAdministratorRole))
+                                {
+                                    <nav class="MyAccountNav navbar navbar-expand-lg navbar-light ">
+                                        <div id="navbarSupportedContent">
+                                            <ul class="navbar-nav mr-auto">
+                                                <li class="nav-item dropdown">
+                                                    <NavLink href="@HostPageMyAccount?.HostPath" class="nav-link dropdown-toggle" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="@AreaExpandedMyAccount" style="display: flex; justify-content: center; align-items: center; padding: 5px;">
+                                                        <span> <ImageLoader Src="/images/general/person-circle-outline.svg" style="width:34px" width="34" height="34"  /></span> <span class="AccountName" style="color: rgba(0, 0, 0, 0.78); font-size: 16px;">  @((MarkupString)"&nbsp;")@_SharedResource["My Account"] @*@HostPageMyAccount?.Title*@ </span>
+                                                    </NavLink>
+                                                    <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                                        <div style="margin: 5px 0; ">   @_SharedResource["Hello"]</div>
+                                                        <div class="btn-group" role="group" aria-label="Basic example">
+                                                            <NavLink class="btn btn-secondary" href="@HostPageLogin?.HostPath">@HostPageLogin?.Title</NavLink>
+                                                            <NavLink class="btn btn-secondary" href="@HostPageLogin?.HostPath">@_SharedResource["Register"]</NavLink>
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </nav>
+                                }
+                            </NotAuthorized>
+                        </AuthorizeView>
+                    </div>
+                    @if (_Settings.Value.HasProductFavorites)
+                    {
+                        <div class="col-auto text-center FavTop">
+                            <div style="position: relative; display: inline-block">
+                                <NavLink href="@(ApplicationUser == null ? HostPageProductFavorites?.HostPath : HostPageMyAccountProductFavorites?.HostPath)">
+                                    <span> <ImageLoader Src="/images/general/heart-outline.svg" style="width:34px; height:34px "  width="34" height="34"   /></span>
+                                    @if (ProductFavoritesCount > 0)
+                                    {
+                                        <span class="FavCount">  @ProductFavoritesCount  </span>
+                                    }
+                                </NavLink>
+                            </div>
+                        </div>
+
+                    }
+                    @if (_Settings.Value.HasProductsComparator)
+                    {
+                        <div class="col-auto text-center CompTop">
+                            <div style="position: relative;  display: inline-block; margin: auto">
+                                <NavLink href="@(ApplicationUser == null ? HostPageProductComparator?.HostPath: HostPageMyAccountProductComparator?.HostPath)">
+                                    <span> <ImageLoader Src="/images/general/checkmark-done-circle-outline.svg" style="width:34px; height:34px "  width="34" height="34"  /></span>
+                                    @if (ProductComparatorsCount > 0)
+                                    {
+                                        <span class="CompareCount"> @ProductComparatorsCount  </span>
+                                    }
+                                </NavLink>
+                            </div>
+                        </div>
+                    }
+                    @if (_Settings.Value.HasMessages || _Settings.Value.HasNewsletter)
+                    {
+                        <div class="col-auto text-center" style="height:44px">
+                            <audio id="UserNotificationSound" src="/audio/glass_ping-Go445-1207030150.wav"></audio>
+                            <div class="NotificationMenu" style="position: relative; display: inline-block; margin-top:3px" @onclick="@(async()=> { await UpdateReadUserNotifications(); if (UserNotifications != null) { UserNotifications.UnreadCount = 0; }   } )">
+
+                                @if (UserNotifications?.UnreadCount > 0)
+                                {
+                                    <span class="cartCount">@UserNotifications?.UnreadCount</span>
+                                }
+                                <button class="NotificationLink @ButtonActiveNotification" style=" display: flex; justify-content: center; align-items: center; cursor: pointer; color: rgba(0, 0, 0, 0.78);  position: relative; border:0; background-color:#fff" @onclick="@(()=> { ButtonActiveNotification = "active";   if (StyleDivUserNotifications == "display:block") { StyleDivUserNotifications = "display:none"; ButtonActiveNotification = ""; } else { StyleDivUserNotifications = "display:block"; ButtonActiveNotification = "active"; } })">
+                                   <ImageLoader src="/images/notifications-outline.svg" style="width:34px; height:34px"  width="34" height="34"  /> @*<span style="color: rgba(0, 0, 0, 0.78);"> @_SharedResource["Notifications"]</span>*@
+                                </button>
+                                @if (UserNotifications?.Any() == true)
+                                {
+                                    <div class="CartTopBox dropdown-menu" style="@StyleDivUserNotifications">
+                                        <b> @_SharedResource["Notifications"] </b>
+                                        <br />
+                                        @foreach (var item in UserNotifications ?? new List<UserNotification>())
+                                        {
+                                            <div class="ShoppingItem" style="padding : 10px 0; border-bottom: solid 1px #efefef">
+                                                <div class="row">
+                                                    <div class="col-sm-3">
+                                                        <span style="font-size: 11px"> @item.Inserted</span>
+                                                    </div>
+                                                    <div class="col-sm-9" style="font-weight: bold">
+                                                        @if (item.UserNotificationTypeAction == UserNotificationTypeAction.IsMessage)
+                                                        {
+                                                            <NavLink href="@($"{HostPageAddEdiMessage?.HostPath}?MessageID={item.EntityID}")" Match="NavLinkMatch.All" title="@_SharedResource["Edit"]">
+                                                                @_SharedResource["New Message"] @((MarkupString)":&nbsp;") @item.EntityID
+                                                            </NavLink>
+                                                        }
+                                                        else if (item.UserNotificationTypeAction == UserNotificationTypeAction.IsMessageComment)
+                                                        {
+                                                            <NavLink href="@($"{HostPageAddEdiMessage?.HostPath}?MessageID={item.EntityID}")" Match="NavLinkMatch.All" title="@_SharedResource["Edit"]">
+                                                                @_SharedResource["New Message Comment"] @((MarkupString)":&nbsp;") @item.EntityID
+                                                            </NavLink>
+                                                        }
+                                                        else if (item.UserNotificationTypeAction == UserNotificationTypeAction.IsNewsletter)
+                                                        {
+                                                            <NavLink href="@($"{HostPageViewNewsletter?.HostPath}?NewsletterSubscriberNoteID={item.EntityID}")" Match="NavLinkMatch.All" title="@_SharedResource["Edit"]">
+                                                                @_SharedResource["Newsletter"] @((MarkupString)":&nbsp;") @item.Title
+                                                            </NavLink>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                        @if (UserNotifications?.Any() == true)
+                                        {
+                                            <div class="SmallPag">
+                                                <Pager StartPage="@UserNotifications.StartPage" EndPage="@UserNotifications.EndPage" CurrentPage="@UserNotifications.CurrentPage" TotalPages="@UserNotifications.TotalPages" PageLimit="@UserNotifications.PageLimit" CurrentPages="@UserNotifications.CurrentPages" OnClick="@OnChangePageUserNotifications"></Pager>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div style="margin: 10px 0; text-align: center">
+                                                @_SharedResource["NoRecords"]
+                                            </div>
+                                        }
+                                        @*<div>
+                                                <NavLink class="btn btn-primary  " style="width: 100%" href="@(HostPageListUserNotification?.HostPath)">   @_SharedResource["Notifications"]</NavLink>
+                                            </div>*@
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    @if (_Settings.Value.HasShoppingCart)
+                    {
+                        <div class="col-auto CartTop " @onmouseover="@(()=>  StyleDiv = "display:block" )" @onmouseout="@(() => StyleDiv = "display:none" )">
+                            <div style="position: relative; display: inline-block">
+                                @if (ShoppingCartItems?.SumQuantityItems > 0)
+                                {
+                                    <span class="cartCount">@ShoppingCartItems?.SumQuantityItems</span>
+                                }
+                                @*<button class="CartLink" style="color: rgba(0, 0, 0, 0.78); border: 0; background-color:#fff" href="@(HostPageShoppingCart?.HostPath)" @onclick="@(()=> {  if (StyleDiv == "display:block") { StyleDiv = "display:none"; } else { StyleDiv = "display:block"; } })">
+                                    <span> <ImageLoader Src="/images/general/cart-outline.svg" style="width:34px" /></span>   <span class="hideOnMob"> @_SharedResource["Cart"]</span>
+                                </button>*@
+                            <buttonlink class="CartLink" @onclick="@(()=> { _NavigationManager.NavigateTo(HostPageShoppingCart?.HostPath); })">
+                                <span class="left-img">
+                                    <ImageLoader Src="/images/general/cart-outline.svg" style="width:34px; height:34px"  width="34" height="34" />
+                                </span>   <span class="hideOnMob"> @_SharedResource["Cart"]</span>
+                            </buttonlink>
+                                @if (ShoppingCartItems?.SumQuantityItems > 0)
+                                {
+                                    <div class="CartTopBox dropdown-menu"  @onmouseover="@(() => StyleDiv = "display:block")" style="@StyleDiv">
+                                        @foreach (var shoppingCartItem in ShoppingCartItems ?? new List<ShoppingCartItem>())
+                                        {
+                                            <div class="ShoppingItem" style="padding : 10px 0; border-bottom: solid 1px #efefef">
+                                                <div class="row">
+                                                    <div class="col-2" style="padding-left:10px; padding-right:5px">
+                                                        @if (shoppingCartItem.ProductID != null)
+                                                        {
+                                                            <NavLink href="@(shoppingCartItem.Product?.HostPath)">
+                                                                <img style="width:100%" src="@shoppingCartItem.Product?.CurrentImage" width="50" class="lazyload" loading="lazy" alt="@shoppingCartItem.Product?.Title" />
+                                                            </NavLink>
+                                                        }
+                                                        else if (shoppingCartItem.VoucherID != null)
+                                                        {
+                                                            <ImageLoader style="width:100%" Src="/images/general/voucher.png" class="lazyload" loading="lazy" />
+                                                        }
+                                                        else if (shoppingCartItem.GiftCardValueID != null)
+                                                        {
+                                                            <ImageLoader class="ItemPicture lazyload" style="width:100%" Src="/images/general/gift-card.jpg" loading="lazy" />
+                                                        }
+                                                    </div>
+                                                    <div class="col">
+                                                        @if (shoppingCartItem.ProductID != null)
+                                                        {
+                                                            <NavLink href="@(shoppingCartItem.Product?.HostPath)" class="cartItemTitle" style="font-size:12px;line-height: 13px; font-weight:bold">
+                                                                @shoppingCartItem.Product?.Title<br />
+                                                                @if (@shoppingCartItem.ProductAtribute != null && @shoppingCartItem.ProductAtribute.ProductAtributeID != default)
+                                                                {
+                                                                    @shoppingCartItem.ProductAtribute.Atribute?.Title @((MarkupString) ": " ) @shoppingCartItem.ProductAtribute.AtributeValue?.Title
+                                                                }
+                                                            </NavLink>
+                                                        }
+                                                        else if (shoppingCartItem.VoucherID.HasValue)
+                                                        {
+                                                            @shoppingCartItem.Voucher.Title
+                                                        }
+                                                        else if (shoppingCartItem.GiftCardValueID.HasValue)
+                                                        {
+                                                            @shoppingCartItem.GiftCardValue.Title @((MarkupString)": " ) @shoppingCartItem.GiftCardTemplate.Title
+                                                        }
+                                                        <div style="font-size:13px;line-height: 15px; margin-top: 5px">
+                                                            @shoppingCartItem.Quantity @((MarkupString) "x " )
+                                                            @if (shoppingCartItem.ProductID.HasValue)
+                                                            {
+                                                                @if (shoppingCartItem.Product?.OldPrice > 0)
+                                                                {
+                                                                    <span style="text-decoration:line-through"> @shoppingCartItem.Product?.OldPrice</span>@((MarkupString)"&nbsp")
+                                                                }
+                                                                @if (shoppingCartItem.Product?.UserPriceOld > 0)
+                                                                {
+                                                                    <span style="text-decoration:line-through" class="OldPrice">
+                                                                        @shoppingCartItem.Product.UserPriceOld
+                                                                    </span>
+                                                                    @((MarkupString)"&nbsp")
+                                                                }
+                                                                @shoppingCartItem?.Product?.Price @((MarkupString)"&nbsp") @_MainApp?.PageState?.Currency <br />
+                                                                @if (shoppingCartItem.ShoppingCartItemOptionals?.Any() == true)
+                                                                {
+                                                                    <ul>
+                                                                        @foreach (var optional in shoppingCartItem.ShoppingCartItemOptionals)
+                                                                        {
+                                                                            <li>@optional.Quantity @((MarkupString)"x") @optional.Title (@optional.Price @_MainApp?.PageState?.Currency)</li>
+                                                                        }
+                                                                    </ul>
+                                                                }
+                                                            }
+                                                            else if (shoppingCartItem.VoucherID.HasValue)
+                                                            {
+                                                                if (shoppingCartItem.Voucher.DiscountPercent > 0)
+                                                                {
+                                                                    @shoppingCartItem.Price
+                                                                }
+                                                                else
+                                                                {
+                                                                    @((MarkupString)"-" ) @shoppingCartItem.Voucher.Discount
+                                                                }
+                                                                @_MainApp?.PageState?.Currency
+                                                            }
+                                                            else if (shoppingCartItem.GiftCardValueID.HasValue)
+                                                            {
+                                                                @shoppingCartItem.GiftCardValue.Price @_MainApp?.PageState?.Currency
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                        @if (ShoppingCartItems?.Any() == true)
+                                        {
+                                            <div class="TotalProd" style="font-weight:bold; margin: 10px 0; text-align: right">
+                                                @_SharedResource["Total"]:@*@ShoppingCartItems?.SumQuantityItems @_SharedResource["Products"]*@  @ShoppingCartItems?.SumPriceItems @_MainApp?.PageState?.Currency
+                                            </div>
+                                            <Pager StartPage="@ShoppingCartItems.StartPage" EndPage="@ShoppingCartItems.EndPage" CurrentPage="@ShoppingCartItems.CurrentPage" TotalPages="@ShoppingCartItems.TotalPages" PageLimit="@ShoppingCartItems.PageLimit" CurrentPages="@ShoppingCartItems.CurrentPages" OnClick="@OnChangePage"></Pager>
+                                        }
+                                        else
+                                        {
+                                            <div style="margin: 10px 0; text-align: center">
+                                                @_SharedResource["The Shopping Cart is Empty"]
+                                            </div>
+                                        }
+                                        <div>
+                                            <NavLink class="btn btn-primary  " style="width: 100%"href="@(HostPageShoppingCart?.HostPath)">   @_SharedResource["Shopping Cart"]</NavLink>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </nav>
+    </div>
+    <nav class="DepartMenu navbar navbar-expand-lg navbar-light bg-light " style="background-color: #efefef ">
+        <div class="container-fluid">
+            <div class="collapse navbar-collapse @DepartmentsToggle" id="navbarTogglerDemo03">
+                <a class="close-menu" @onclick="@(()=> {  DepartmentsToggle = "";  })" style="display:none;float: right;  "> <ion-icon name="close" style="font-size: 30px;"></ion-icon></a>
+                <ul class="navbar-nav mr-auto">
+                    @foreach (var item1 in Departments?.Where(p => p.ParentDepartmentID == null && p.DepartmentPlace?.DepartmentPlaceAction == DepartmentPlaceAction.IsTop) ?? new List<Department>())
+                    {
+                        if (item1.DepartmentType?.DepartmentTypeAction == DepartmentTypeAction.IsProductCategoriesList)
+                        {
+
+                        }
+                        else if (item1.DepartmentType?.DepartmentTypeAction == DepartmentTypeAction.IsArticleCategoriesList)
+                        {
+
+                        }
+                        else if (string.IsNullOrEmpty(item1.MenuDescription) && (Departments?.Where(p => p.ParentDepartmentID == item1.DepartmentID) == null || Departments?.Where(p => p.ParentDepartmentID == item1.DepartmentID).Count() <= 0))
+                        {
+                            <li class="nav-item">
+                                <b>
+                                    <NavLink @onclick="@(()=> {  DepartmentsToggle = "";  })" class="nav-link" href="@(item1.IsExternalUrl ? item1.ExternalUrl : item1.HostPath)" style=" color: rgba(0, 0, 0, 0.78); font-size: 14px;">
+                                        @if (item1.HasIcon)
+                                        {
+                                            <img src="@item1.FirstImageOrNull" class="lazyload" loading="lazy" alt="@item1.Title" />
+                                        }
+                                        @item1.Title
+                                    </NavLink>
+                                </b>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item dropdown">
+                                @if (item1.IsNotUrlLinkInMenu)
+                                {
+                                    @if (item1.HasIcon)
+                                    {
+                                        <img src="@item1.FirstImageOrNull" class="lazyload" loading="lazy" alt="@item1.Title" />
+                                    }
+                                    @item1.Title
+                                }
+                                else
+                                {
+                                    <NavLink href="@item1.HostPath" class="nav-link dropdown-toggle" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style=" color: rgba(0, 0, 0, 0.78); font-size: 14px; font-weight:bold">
+                                        @if (item1.HasIcon)
+                                        {
+                                            <img src="@item1.FirstImageOrNull" class="lazyload" loading="lazy" alt="@item1.Title" />
+                                        }
+                                        @item1.Title
+                                    </NavLink>
+                                }
+                                <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                    @if (!string.IsNullOrEmpty(item1.MenuDescription))
+                                    {
+                                        <ul>
+                                            <li @onclick="@(()=> {  DepartmentsToggle = "";  })">
+                                                @((MarkupString)item1.MenuDescription)
+                                            </li>
+                                        </ul>
+                                    }
+                                    @foreach (var item2 in Departments?.Where(p => p.ParentDepartmentID == item1.DepartmentID && p.DepartmentPlace?.DepartmentPlaceAction == DepartmentPlaceAction.IsTop) ?? new List<Department>())
+                                    {
+                                        @if (item2.IsNotUrlLinkInMenu)
+                                        {
+                                            @if (item2.HasIcon)
+                                            {
+                                                <img src="@item2.FirstImageOrNull" class="lazyload" loading="lazy" alt="@item2.Title" />
+                                            }
+                                            @item2.Title
+                                        }
+                                        else
+                                        {
+                                            <NavLink @onclick="@(()=> {  DepartmentsToggle = "";  })" class="dropdown-item" href="@(item2.IsExternalUrl ? item2.ExternalUrl : item2.HostPath)">
+                                                @if (item2.HasIcon)
+                                                {
+                                                    <img src="@item2.FirstImageOrNull" class="lazyload" loading="lazy" alt="@item2.Title" />
+                                                }
+                                                @item2.Title
+                                            </NavLink>
+                                        }
+                                        <ul>
+                                            @foreach (var item3 in Departments?.Where(p => p.ParentDepartmentID == item2.DepartmentID && p.DepartmentPlace?.DepartmentPlaceAction == DepartmentPlaceAction.IsTop) ?? new List<Department>())
+                                            {
+                                                <li>
+                                                    <NavLink @onclick="@(()=> {  DepartmentsToggle = "";  })" href="@(item3.IsExternalUrl ? item3.ExternalUrl : item3.HostPath)">
+                                                        @if (item3.HasIcon)
+                                                        {
+                                                            <img src="@item3.FirstImageOrNull" class="lazyload" loading="lazy" alt="@item3.Title" />
+                                                        }
+                                                        @item3.Title
+                                                    </NavLink>
+                                                </li>
+                                            }
+                                        </ul>
+                                    }
+                                </div>
+                            </li>
+                        }
+                    }
+                </ul>
+            </div>
+        </div>
+    </nav>
+    @if (_Settings.Value.HasProducts)
+    {
+        <nav class="ProductCatMenu navbar navbar-expand-lg navbar-light bg-light">
+            <div class="container-fluid">
+                <div class="collapse navbar-collapse @ProductCategoriesToggle" id="navbarTogglerProd">
+                    <a class="close-menu" @onclick="@(()=> {  ProductCategoriesToggle = "";  })" style="display:none;float: right;  "><ion-icon name="close" style="font-size: 30px;"></ion-icon></a>
+                    <div style="display: none; clear: right; font-size: 20px" class="showonmobile900">@_SharedResource["Products"]</div>
+                    <ul class="navbar-nav mr-auto" id="NavProdMenu">
+                        @foreach (var item1 in ProductCategories?.Where(p => p.ParentProductCategoryID == null) ?? new List<ProductCategory>())
+                        {
+                            if (string.IsNullOrEmpty(item1.MenuDescription) && (ProductCategories.Where(p => p.ParentProductCategoryID == item1.ProductCategoryID) == null || ProductCategories.Where(p => p.ParentProductCategoryID == item1.ProductCategoryID).Count() <= 0))
+                            {
+                                <li class="nav-item">
+                                    <NavLink @onclick="@(()=> {  ProductCategoriesToggle = "";  })" class="nav-link" href="@(item1.IsExternalUrl ? item1.ExternalUrl : item1.HostPath)" style=" color: rgba(0, 0, 0, 0.78); font-size: 14px;font-weight:bold">
+                                        @if (item1.HasIcon)
+                                        {
+                                            <img src="@item1.FirstImageOrNull" class="lazyload" loading="lazy" alt="@item1.Title" />
+                                        }
+                                        @item1.Title
+                                    </NavLink>
+                                </li>
+                            }
+                            else
+                            {
+                                <li class="nav-item dropdown">
+                                    @if (item1.IsNotUrlLinkInMenu)
+                                    {
+                                        @if (item1.HasIcon)
+                                        {
+                                            <img src="@item1.FirstImageOrNull" class="lazyload" loading="lazy" alt="@item1.Title" />
+                                        }
+                                        <span style="font-weight: bold">
+                                            @item1.Title
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <NavLink href="@item1.HostPath" class="nav-link dropdown-toggle" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style=" color: rgba(0, 0, 0, 0.78); font-size: 14px; font-weight: bold">
+                                            @if (item1.HasIcon)
+                                            {
+                                                <img src="@item1.FirstImageOrNull" class="lazyload" loading="lazy" alt="@item1.Title" />
+                                            }
+                                            @item1.Title
+                                        </NavLink>
+
+                                    }
+                                    <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                        <ul class="SubMenuItems" style="display: grid;    grid-template-columns: 33% 33% 33%;">
+                                            @foreach (var item2 in ProductCategories.Where(p => p.ParentProductCategoryID == item1.ProductCategoryID) ?? new List<ProductCategory>())
+                                            {
+                                                <li>
+                                                    @if (item2.IsNotUrlLinkInMenu)
+                                                    {
+                                                        @if (item2.HasIcon)
+                                                        {
+                                                            <img src="@item2.FirstImageOrNull" class="lazyload" loading="lazy" alt="@item2.Title" />
+                                                        }
+                                                        @item2.Title
+                                                    }
+                                                    else
+                                                    {
+                                                        <NavLink class="dropdown-item" @onclick="@(()=> {  ProductCategoriesToggle = "";  })" href="@(item2.IsExternalUrl ? item2.ExternalUrl : item2.HostPath)">
+                                                            @if (item2.HasIcon)
+                                                            {
+                                                                <img src="@item2.FirstImageOrNull" class="lazyload" loading="lazy" alt="@item2.Title" />
+                                                            }
+                                                            @item2.Title
+                                                        </NavLink>
+                                                    }
+                                                    <ul class="ProdSubItems">
+                                                        @foreach (var item3 in ProductCategories.Where(p => p.ParentProductCategoryID == item2.ProductCategoryID) ?? new List<ProductCategory>())
+                                                        {
+                                                            <li>
+                                                                @if (item3.IsNotUrlLinkInMenu)
+                                                                {
+                                                                    @if (item3.HasIcon)
+                                                                    {
+                                                                        <img src="@item3.FirstImageOrNull" class="lazyload" loading="lazy" alt="@item3.Title" />
+                                                                    }
+                                                                    @item3.Title
+                                                                }
+                                                                else
+                                                                {
+                                                                    <NavLink @onclick="@(() => { ProductCategoriesToggle = ""; })" href="@(item3.IsExternalUrl ? item3.ExternalUrl : item3.HostPath)">
+                                                                        @if (item3.HasIcon)
+                                                                        {
+                                                                            <img src="@item3.FirstImageOrNull" class="lazyload" loading="lazy" alt="@item3.Title" />
+                                                                        }
+                                                                        @item3.Title
+                                                                    </NavLink>
+                                                                }
+                                                            </li>
+                                                        }
+                                                    </ul>
+                                                </li>
+                                            }
+                                        </ul>
+                                        <div class="ProductMenuDesc">
+                                            @((MarkupString)item1.MenuDescription)
+                                        </div>
+                                    </div>
+                                </li>
+                            }
+                        }
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    }
+</header>
+@if (_MainApp?.PageState?.IsHomePage == true && _Settings.Value.HasBanners)
+{
+    @if (Banners == null)
+    {
+        @*<div style="text-align: center; height: 400px; display: flex; justify-content: center; align-items:center; color: #ccc"> <img src="/js/xZoom-master/images/xloading.gif" /><br /><br /> </div>*@
+    }
+    else if (Banners?.Count() == 0)
+    {
+
+    }
+    else if (Banners?.Count() > 0)
+    {
+        <div id="HomePageBannerCarousel" class="MyBanner carousel slide  carousel-fade" data-ride="carousel" data-interval="4000">
+            <ol class="carousel-indicators">
+                @foreach (var item in Banners ?? new List<DepartmentFile>())
+                {
+                    <li data-target="#HomePageBannerCarousel" data-slide-to="@Banners.FindIndex(p => p.DepartmentFileID == item.DepartmentFileID)" class="@(item.DepartmentFileID == Banners.First().DepartmentFileID ? "active" : "")"></li>
+                }
+            </ol>
+            <div class="carousel-inner">
+                @foreach (var item in Banners ?? new List<DepartmentFile>())
+                {
+                    <div class="carousel-item @(item.DepartmentFileID == Banners.First().DepartmentFileID ? "active" : "")">
+                        <a href="@item.BannerUrl">
+                            @if (item.DepartmentFileID == Banners.First().DepartmentFileID)
+                            {
+                                <img style="width: 100%; height:auto !important" width="1800" height="500" src="@item.UrlNice" alt="@item.Title" class="d-block w-100" />
+                            }
+                            else
+                            {
+                                <img style="width: 100%; height:auto !important"  width="1800" height="500" src="@item.UrlNice" loading="lazy" alt="@item.Title" class="d-block w-100 "  />
+                            }
+                        </a>
+                        <div class="carousel-caption d-none d-md-block">
+                            @((MarkupString)(@item.Description))
+                        </div>
+                    </div>
+                }
+            </div>
+            <a id="HomePageBannerCarousel-prev" class="carousel-control-prev" href="#HomePageBannerCarousel" role="button" data-slide="prev">
+                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                <span class="sr-only">Previous</span>
+            </a>
+            <a id="HomePageBannerCarousel-next" class="carousel-control-next" href="#HomePageBannerCarousel" role="button" data-slide="next">
+                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                <span class="sr-only">Next</span>
+            </a>
+        </div>
+    }
+}
+<div class="container-fluid body-content">
+    @Body
+    @if (_Settings.Value.HasRecentlyVisitedProducts && _MainApp?.PageState != null)
+    {
+        @if (RecentlyVisitedProducts?.Count() > 0@*&& IsScriptSlickLoaded*@)
+        {
+            <hr />
+            <h4>@_SharedResource["Recently visited"]</h4>
+            <div class="ProdRecentVisited owl-carousel owl-theme">
+                @foreach (var item in RecentlyVisitedProducts ?? new List<RecentlyVisitedProduct>())
+                {
+                    <div class="ProductItem PSmall ">
+                        <div class="ProdImage">
+                            <NavLink href="@item.Product?.HostPath" style="width:100%">
+                                <img src="@item.Product.CurrentImage" @onmouseover="(() => item.Product.CurrentImage = item.Product?.SecondImage)" loading="lazy" @onmouseout="(() => item.Product.CurrentImage = item.Product?.FirstImage)" class="lazyload" style="max-width:100%; " />
+                            </NavLink>
+                        </div>
+                        <div class="ProdDetails">
+                            <NavLink href="@item.Product?.HostPath" style="font-weight:400;" class="ProdTitle">@item.Product?.Title  </NavLink>
+                            <div class="ProductPrice" style="font-size: 16px;   font-weight:bold">
+                                @if (item.Product.Discount > 0)
+                                {
+                                    <span style="text-decoration:line-through" class="OldPrice">
+                                        @*@_SharedResource["Old Price"] @((MarkupString)":")*@ @item.Product.OldPrice @*@PageState?.Currency*@
+                                    </span>
+                                    <span style="color: #dd0404">  @item.Product.Price@((MarkupString)"&nbsp")@_MainApp.PageState?.Currency</span>
+                                }
+                                else
+                                {
+                                    @if (item.Product.UserPriceOld > 0)
+                                    {
+                                        <span style="text-decoration:line-through" class="OldPrice">
+                                            @item.Product.UserPriceOld
+                                        </span>
+                                        @((MarkupString)"&nbsp")
+                                    }
+                                    @item.Product.Price@((MarkupString)"&nbsp")@_MainApp.PageState?.Currency
+                                }
+                            </div>
+                            <br />
+                            @if (_Settings.Value.HasShoppingCart && (item.Product.ProductAtributes?.Any(p => p.Atribute.IsProductStocks == true && p.AtributeValue.IsCanAddToCart) == true || !item.Product.ProductAtributes?.Any(p => p.Atribute.IsProductStocks == true) == true))
+                            {
+                                <button class="btn btn-primary BtnAddToCart" @onclick="(async () => { await AddToCart(new ShoppingCartItem() { ProductID = item.ProductID }); await LoadRecentlyVisitedProduts(); })">@_SharedResource["Add to cart"]</button>
+                                <br />
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    }
+    <a href="#" id="buttonTop" style="opacity: 0; position: fixed;"> <ImageLoader Src="/images/chevron-up-outline.svg" width="16" height="16"></ImageLoader>  </a>
+    @if (_Settings.Value.HasShoppingCart)
+    {
+        <div class="modal" tabindex="-1" role="dialog" id="AddProductToShoppingCartSharedModal" aria-hidden="true" data-keyboard="false" data-backdrop="static">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">@_SharedResource["The product has been added to cart"]</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close" @onclick="(() => ResetShoppingCartTempParameters())">
+                            <span aria-hidden="true">×</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        @if (Product != null)
+                        {
+                            <div class="row">
+                                <div class="col-md-6" style=" text-align: center;">
+                                    <img src="@Product.CurrentImage" style="max-width: 100%; max-height: 200px" alt="@Product.Title" loading="lazy" class="lazyload" />
+                                    @if (Product.Discount > 0)
+                                    {
+                                        <div class="DiscountBullet">
+                                            @Product?.Discount%
+                                        </div>
+                                    }
+                                </div>
+                                <div class="  col-md-6">
+                                    <br />
+                                    <h3> @Product.Title </h3>
+                                    @if (SelectedProductAtributeOption != null)
+                                    {
+                                        <b>@SelectedProductAtributeOption.Atribute?.Title:</b> @SelectedProductAtributeOption.AtributeValue?.Title
+                                    }
+                                    @if (SelectedProductAtributeOptionals != null)
+                                    {
+                                        <ul>
+                                            @foreach (var item in SelectedProductAtributeOptionals)
+                                            {
+                                                <li>@item.Quantity @((MarkupString)"x") @item.ProductAtribute?.AtributeValue?.Title (@item.ProductAtribute.OptionPrice @_MainApp?.PageState?.Currency)</li>
+                                            }
+                                        </ul>
+                                    }
+                                    @if (Product.Discount > 0)
+                                    {
+
+                                        <div class="ProductPrice">
+
+                                            @_SharedResource["Old Price"]@((MarkupString)":") <span style="text-decoration: line-through" class="OldPrice"> @Product.OldPrice @_MainApp.PageState?.Currency</span>
+
+                                            <span style="color: #dd0404"> @Product.Price @_MainApp?.PageState?.Currency</span>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="ProductPrice">
+                                            @if (Product.UserPriceOld > 0)
+                                            {
+                                                <span style="text-decoration:line-through" class="OldPrice">
+                                                    @Product.UserPriceOld
+                                                </span>
+                                                @((MarkupString)"&nbsp")
+                                            }
+                                            @Product.Price @_MainApp?.PageState?.Currency
+                                        </div>
+                                    }
+                                    @if (SelectedProductAtributeOptionals?.Any() == true)
+                                    {
+                                        @_SharedResource["Total"]@((MarkupString)":") @(Product.Price + SelectedProductAtributeOptionals.Sum(p=>p.Quantity * p.ProductAtribute?.OptionPrice)) @_MainApp?.PageState?.Currency
+                                    }
+                                    <br />
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-dismiss="modal" @onclick="(() => ResetShoppingCartTempParameters())">@_SharedResource["Continue to shopping"]</button>
+                        <NavLink href="@HostPageShoppingCart?.HostPath" class="btn btn-sm btn-outline-primary" @onclick="@(async () => { await _JsRuntime.InvokeAsync<object>("CloseModal", "AddProductToShoppingCartSharedModal"); })">@_SharedResource["Shopping Cart"]</NavLink>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal" tabindex="-1" role="dialog" id="ProductionOptionsSelectionModal" aria-hidden="true" data-keyboard="false" data-backdrop="static">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">@_SharedResource["Select"] @_SharedResource["Option"]</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close" @onclick="(() => ResetShoppingCartTempParameters())">
+                            <span aria-hidden="true">×</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        @if (Product != null && ShoppingCartItem != null)
+                        {
+                            <div class="row">
+                                <div class="col-md-6" style=" text-align: center;">
+                                    <img src="@Product.CurrentImage" style="max-width: 100%; max-height: 200px" loading="lazy" alt="@Product.Title" class="lazyload" />
+                                    @if (Product.Discount > 0)
+                                    {
+                                        <div class="DiscountBullet">
+                                            @Product?.Discount%
+                                        </div>
+                                    }
+                                </div>
+                                <div class="col-md-6">
+                                    <h3>   @Product.Title </h3> <br />
+                                    @if (Product.Discount > 0)
+                                    {
+
+                                        <div class="ProductPrice">
+
+                                            <span style="text-decoration: line-through" class="OldPrice"> @_SharedResource["Old Price"]@((MarkupString)":") @Product.OldPrice @_MainApp.PageState?.Currency</span>
+
+                                            <span style="color: #dd0404"> @Product.Price @_MainApp?.PageState?.Currency</span>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="ProductPrice">
+                                            @if (Product.UserPriceOld > 0)
+                                            {
+                                                <span style="text-decoration:line-through" class="OldPrice">
+                                                    @Product.UserPriceOld
+                                                </span>
+                                                @((MarkupString)"&nbsp")
+                                            }
+                                            @Product.Price @_MainApp?.PageState?.Currency
+                                        </div>
+                                    }
+                                    @if (ShoppingCartItem.ShoppingCartItemOptionals?.Any() == true && ProductAtributeOptionals?.Any() == true)
+                                    {
+                                        <span style="font-size:18px;color:#007bff;font-weight:700;width:100%;float:left;">
+                                            @_SharedResource["Total"]@((MarkupString)":") @(Product.Price + ShoppingCartItem.ShoppingCartItemOptionals
+                                                                                                       .Select(s=>  new {
+                                                                                                                         s.Quantity,
+                                                                                                                         Price = ProductAtributeOptionals.Where(pa=>pa.ProductAtributeID == s.ProductAtributeID).Select(s=>s.OptionPrice).FirstOrDefault()
+                                                                                                                        }
+                                                                                                                )
+                                                                                                       .Sum(p=>p.Quantity * p.Price)) @_MainApp?.PageState?.Currency
+                                                                                                </span>
+                                    }
+                                    <br />
+                                    @if (ProductAtributeOptionals?.Any() == true)
+                                    {
+
+                                        <b>@_SharedResource["Select"] @_SharedResource["Optionals"]</b><br />
+                                        <div class="ProductOptions">
+                                            @foreach (var item in ProductAtributeOptionals.OrderBy(p => p.AtributeValue?.Importance))
+                                            {
+                                                <label>
+                                                    <input type="checkbox" checked="@(ShoppingCartItem.ShoppingCartItemOptionals?.Any(o=>o.ProductAtributeID == item.ProductAtributeID)==true)" @onchange="@(() => { if (ShoppingCartItem.ShoppingCartItemOptionals?.Any(o => o.ProductAtributeID == item.ProductAtributeID) == true) { ShoppingCartItem.ShoppingCartItemOptionals.RemoveAll(s => s.ProductAtributeID == item.ProductAtributeID); } else { ShoppingCartItem.ShoppingCartItemOptionals.Add(new ShoppingCartItemOptional() { ProductAtributeID = item.ProductAtributeID, Quantity = 1 }); } })" />
+                                                    <span>  @item.AtributeValue.Title </span>
+                                                    @if (item.OptionOldPrice > 0)
+                                                    {
+                                                        <span style="text-decoration: line-through" class="OldPrice"> @item.OptionOldPrice</span>
+                                                    }
+                                                    <span style="color: #dd0404">&nbsp;@item.OptionPrice</span> @_MainApp?.PageState?.Currency
+                                                    @if (ShoppingCartItem.ShoppingCartItemOptionals?.Any(o => o.ProductAtributeID == item.ProductAtributeID) == true)
+                                                    {
+
+                                                        <select id="PageSizeProductOptional" class="form-control SelectQuantity" style=" height: 30px;padding:2px 5px;line-height:15px;" @bind="ShoppingCartItem.ShoppingCartItemOptionals.FirstOrDefault(p=>p.ProductAtributeID==item.ProductAtributeID).Quantity" @oninput="@((e) => ShoppingCartItem.ShoppingCartItemOptionals.FirstOrDefault(p=>p.ProductAtributeID == item.ProductAtributeID).Quantity = int.Parse(e.Value.ToString()) )">
+                                                            @for (int i = 1; i <= (item.StockQuantityMax > 0 ? item.StockQuantityMax : _Settings.Value.MaximumShoppingCartQuantity); i++)
+                                                            {
+                                                                <option value="@i">
+                                                                    @i
+                                                                </option>
+                                                            }
+                                                        </select>
+
+                                                    }
+                                                </label>
+                                            }
+                                        </div>
+                                    }
+                                    @if (ProductAtributeOptions?.Any() == true)
+                                    {
+                                        <b>  @_SharedResource["Please select a value"]</b><br />
+                                        <div class="ProductOptions">
+                                            @foreach (var item in ProductAtributeOptions.OrderBy(p => p.AtributeValue?.Importance))
+                                            {
+                                                <label>
+                                                    <input type="radio" disabled="@(!item.AtributeValueStock?.IsCanAddToCart == true)" checked="@(ShoppingCartItem.ProductAtributeID == item.ProductAtributeID)" @onchange="@(() => ShoppingCartItem.ProductAtributeID = item.ProductAtributeID)" />
+                                                    <span>  @item.AtributeValue.Title</span>
+                                                </label>
+                                            }
+                                        </div>
+                                        @*<button class="btn btn-primary" data-dismiss="modal" disabled="@(!ShoppingCartItem.ProductAtributeID.HasValue)" @onclick="(async () => { await AddToCart(ShoppingCartItem); })">@_SharedResource["Add to cart"]</button>*@
+                                        <div class="input-group mb-3" style="width: 220px;  ">
+                                            <select id="PageSize" class="form-control SelectQuantity" style=" height: 45px;padding:2px 5px;line-height:15px;" @bind="ShoppingCartItem.Quantity">
+                                                @for (int i = 1; i <= (ProductAtributeOptions?.Where(p => p.ProductAtributeID == ShoppingCartItem.ProductAtributeID && p.StockQuantity > 0)?.Any() == true ?
+                                      ProductAtributeOptions.FirstOrDefault(p => p.ProductAtributeID == ShoppingCartItem.ProductAtributeID && p.StockQuantity > 0).StockQuantity :
+                                      Product.StockQuantity > 0 ? Product.StockQuantity : _Settings.Value.MaximumShoppingCartQuantity); i++)
+                                                {
+                                                    <option value="@i">
+                                                        @i
+                                                    </option>
+                                                }
+                                            </select>
+                                            <div class="input-group-append">
+                                                <button class="btn btn-primary BtnAddtoCart" data-dismiss="modal" @onclick="(async () => { await AddToCart(ShoppingCartItem); })" disabled="@(ProductAtributeOptions?.Where(p => p.ProductAtributeID == ShoppingCartItem.ProductAtributeID && p.StockQuantity > 0)?.Any() == true ?
+                                                                                                                                                                                                                         ProductAtributeOptions.FirstOrDefault(p => p.ProductAtributeID == ShoppingCartItem.ProductAtributeID && p.StockQuantity > 0).StockQuantity < ShoppingCartItem.Quantity + Product?.ShoppingCartByProductAtributeIDCounts?.Where(p => p.Key == ShoppingCartItem.ProductAtributeID)?.Select(p => p.Count)?.FirstOrDefault() :
+                                                                                                                                                                                                                         ProductAtributeOptions?.Where(p => p.ProductAtributeID == ShoppingCartItem.ProductAtributeID)?.Any() == true ?
+                                                                                                                                                                                                                         _Settings.Value.MaximumShoppingCartQuantity < ShoppingCartItem.Quantity + Product?.ShoppingCartByProductAtributeIDCounts?.Where(p => p.Key == ShoppingCartItem.ProductAtributeID)?.Select(p => p.Count)?.FirstOrDefault() :
+                                                                                                                                                                                                                         ProductAtributeOptions?.Any() == true ? true :
+                                                                                                                                                                                                                         Product?.StockQuantity > 0 ? Product?.StockQuantity < ShoppingCartItem.Quantity + Product?.ShoppingCartItemCount :
+                                                                                                                                                                                                                         _Settings.Value.MaximumShoppingCartQuantity < ShoppingCartItem.Quantity + Product?.ShoppingCartItemCount)">
+                                                    @_SharedResource["Add to cart"]
+                                                    @if (Product?.ShoppingCartByProductAtributeIDCounts?.Any(p => p.Key == ShoppingCartItem.ProductAtributeID && p.Count > 0) == true)
+                                                    {
+                                                        <span class="badge badge-light"> @(Product.ShoppingCartByProductAtributeIDCounts.FirstOrDefault(p => p.Key == ShoppingCartItem.ProductAtributeID).Count) </span>
+                                                    }
+                                                    else if (Product?.ShoppingCartItemCount > 0 && !ProductAtributeOptions?.Any(p => p.ProductAtributeID == ShoppingCartItem.ProductAtributeID) == true)
+                                                    {
+                                                        <span class="badge badge-light"> @(Product?.ShoppingCartItemCount ) </span>
+                                                    }
+                                                </button>
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-primary BtnAddtoCart" data-dismiss="modal" @onclick="(async () => { await AddToCart(ShoppingCartItem); })">
+                                            @_SharedResource["Add to cart"]
+                                            @if (Product?.ShoppingCartByProductAtributeIDCounts?.Any(p => p.Key == ShoppingCartItem.ProductAtributeID && p.Count > 0) == true)
+                                            {
+                                                <span class="badge badge-light"> @(Product.ShoppingCartByProductAtributeIDCounts.FirstOrDefault(p => p.Key == ShoppingCartItem.ProductAtributeID).Count) </span>
+                                            }
+                                            else if (Product?.ShoppingCartItemCount > 0 && !ProductAtributeOptions?.Any(p => p.ProductAtributeID == ShoppingCartItem.ProductAtributeID) == true)
+                                            {
+                                                <span class="badge badge-light"> @(Product?.ShoppingCartItemCount ) </span>
+                                            }
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-dismiss="modal" @onclick="(() => ResetShoppingCartTempParameters())">@_SharedResource["Continue to shopping"]</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    @if (_Settings.Value.HasShoppingCartRememberPopUp && _Settings.Value.HasShoppingCart && _Settings.Value.HasVouchers && ZoneShoppingRememberPopUp != null)
+    {
+        <div class="modal" tabindex="-1" role="dialog" id="ShoppingCartRememberPopUpModal" aria-hidden="true" data-keyboard="false" data-backdrop="static" style="padding: 0">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    @if (ShowPopupShoppingCartRemember)
+                    {
+                        <div class="modal-header">
+                            <h5 class="modal-title">@_SharedResource["You received a voucher"]</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close" @onclick="(() => ShowPopupShoppingCartRemember=false)">
+                                <span aria-hidden="true">×</span>
+                            </button>
+                        </div>
+                        <div class="modal-body text-center">
+                            @((MarkupString)@ZoneShoppingRememberPopUp?.Description)
+                            <button type="button" class="btn btn-lg btn-danger m-auto" @onclick="AddPopupVoucherToShopingCart">@_SharedResource["Use Voucher"]</button>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-dismiss="modal" @onclick="(() => ShowPopupShoppingCartRemember=false)">@_SharedResource["Continue to shopping"]</button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+@*<a @onclick="@(()=>ShowSometing=!ShowSometing)">Show</a>
+    @if (ShowSometing)
+    {
+        <div>Afisat</div>
+    }
+    <a @onclick="@(()=> {  if (StyleDiv == "display:block") { StyleDiv = "display:none"; } else { StyleDiv = "display:block"; } })">Show2</a>
+    <div style="@StyleDiv">
+        <div>Afisat</div>
+    </div>*@
+<footer>
+    <div class="container-fluid">
+        @((MarkupString)Zones?.Where(p => p.ZoneType?.ZoneTypeAction == ZoneTypeAction.IsBottom)?.FirstOrDefault()?.Description)
+        @if (_MainApp?.PageState?.IsBlazorConnected == true)
+        {
+            <input type="hidden" id="IsBlazorConnected" />
+        }
+    </div>
+</footer>
+@code {
+
+    [CascadingParameter] App _MainApp { get; set; }
+    [CascadingParameter] private Task<AuthenticationState> _AuthenticationStateTask { get; set; }
+    public ApplicationUser ApplicationUser { get; private set; }
+    AuthenticationState Authentication;
+    List<Department> Departments;
+    List<ProductCategory> ProductCategories;
+    List<Culture> Cultures;
+    HostPage HostPageLogin;
+    HostPage HostPageMyAccount;
+    HostPage HostPageAdmin;
+    HostPage HostPageSearch;
+    HostPage HostPageShoppingCart;
+    HostPage HostPageProductComparator; HostPage HostPageMyAccountProductComparator;
+    HostPage HostPageProductFavorites; HostPage HostPageMyAccountProductFavorites;
+    List<HostPage> HostPagesAccount;
+    string ShoppingCart { get; set; } = "";
+    List<Zone> Zones { get; set; }
+    string Key;
+    List<KeySuggestion> KeySuggestions;
+    Product Product;
+    #region ShoppingCart Related
+    PaginatedListGV<ShoppingCartItem> ShoppingCartItems;
+    List<ProductAtribute> ProductAtributeOptions;
+    List<ProductAtribute> ProductAtributeOptionals;
+    ShoppingCartItem ShoppingCartItem;
+    ProductAtribute SelectedProductAtributeOption;
+    List<ShoppingCartItemOptional> SelectedProductAtributeOptionals;
+    SearchModel SearchModelShoppingCartItems;
+    public string DefaultSorting = SortOrders.latest.ToString();
+    int ProductFavoritesCount;
+    int ProductComparatorsCount;
+    PaginatedListGV<RecentlyVisitedProduct> RecentlyVisitedProducts;
+    List<DepartmentFile> Banners;
+    bool IsSetLoadScriptCarousel;
+    bool IsSetLoadScriptDropdowns;
+    bool IsSetLoadScriptProductSlick; bool IsScriptSlickLoaded; bool IsSetLoadScripLightBox;
+    bool IsSetLoadScriptProductSlickDistroy = true;
+    bool IsScriptLightBoxLoaded;
+    bool IsRendered;
+    PaginatedListGV<UserNotification> UserNotifications;
+    SearchModel SearchModelUserNotifications;
+    HubConnection hubConnection;
+    HostPage HostPageAddEdiMessage;
+    HostPage HostPageViewNewsletter;
+    #endregion
+    #region FrontEnd
+    List<ZoneTypeAction> ZoneTypeActions;
+    List<DepartmentPlaceAction> DepartmentPlaceActions;
+    Zone ZoneShoppingRememberPopUp;
+    string ShowMyAccount { get; set; } = "";
+    string AreaExpandedMyAccount { get; set; } = "false";
+    string ShowCulture { get; set; } = "";
+    string AreaExpandedCulture { get; set; } = "false";
+    string StyleDiv = "display:none";
+    bool ShowPopupShoppingCartRemember;
+    string ProductCategoriesToggle = "";
+    string DepartmentsToggle = "";
+    string KeySuggestionsSearchBoxDiv = "display: block";
+    string StyleDivUserNotifications = "display:none";
+    string ButtonActiveNotification = "";
+    #endregion
+    bool _Disposed;
+    bool RedirectWhenLogout;
+    IDataProtector _Protector;
+    List<string> CachedKeys;
+    bool IsClearMemoryCache;
+    string thisname;
+    bool CanLoadExternalComponents;
+    int MaxScriptLoad;
+    bool IsSetMainAnaliticsScript;
+    void InitializeObjects()
+    {
+        CachedKeys = new List<string>();
+        SearchModelShoppingCartItems = new SearchModel() { IsShoppingCartBox = true };
+        SearchModelUserNotifications = new SearchModel() { Sort = SortOrders.latest.ToString(), IsNotificationBox = true };
+        ZoneTypeActions = new List<ZoneTypeAction>() { ZoneTypeAction.IsLogo, ZoneTypeAction.IsGeneral, ZoneTypeAction.IsBottom, ZoneTypeAction.IsTop, ZoneTypeAction.IsShoppingRememberPopUp };
+        DepartmentPlaceActions = new List<DepartmentPlaceAction>() { DepartmentPlaceAction.IsTop, DepartmentPlaceAction.IsLeft };
+        try { thisname = this.GetType().Name; } catch { }
+        _Protector = _ProviderProtector.CreateProtector(GetType().FullName);
+    }
+
+    #region InitAndRender
+
+    protected override async Task OnInitializedAsync()
+    {
+        InitializeObjects();
+        //Console.WriteLine("OnInitializedAsync Front Layout");
+        if (_MainApp?.PageState != null)
+        {
+            _MainApp.SubscribeDynamicLayout(this);
+            await Refresh();
+            IsClearMemoryCache = IsRendered = CanLoadExternalComponents = true;
+            if ((_Settings.Value.HasMessages || _Settings.Value.HasNewsletter) && ApplicationUser != null)
+            {
+                try
+                {
+                    hubConnection = new HubConnectionBuilder()
+                             .WithUrl(_NavigationManager.ToAbsoluteUri("/UserNotifications"))
+                             .Build();
+
+                    hubConnection.On<string>("ReceiveRefreshUserNotifications", (applicationuserid) =>
+                    {
+                        if (ApplicationUser != null && ApplicationUser.Id == applicationuserid)
+                        {
+                            Task.Run(() => LoadUserNotifications()).GetAwaiter().GetResult();// Use the Sync Version of an Async Method
+                            if (UserNotifications?.UnreadCount > 0)
+                            {
+                                Task.Run(() => _JsRuntime.InvokeAsync<string>("PlayAudioFile", "AdminNotificationSound")).GetAwaiter().GetResult();// Use the Sync Version of an Async Method
+                                StyleDivUserNotifications = "display:block";
+                                StateHasChanged();
+                            }
+                        }
+                    });
+                    await hubConnection.StartAsync();
+                }
+                catch { }
+
+                SearchModelUserNotifications.PageSize = SearchModelUserNotifications.PageSize ?? _Settings.Value.UserNotificationBoxPageSize;
+                SearchModelUserNotifications.Sort = SearchModelUserNotifications.Sort ?? DefaultSorting;
+                SearchModelUserNotifications.ApplicationUserID = ApplicationUser.Id;
+                HostPageAddEdiMessage = await _HostPageService.GetHostPageByActionType(HostPageActionType.IsMyAccountAddEditMessagePage, _MainApp?.PageState.CultureID ?? 1);
+                HostPageViewNewsletter = await _HostPageService.GetHostPageByActionType(HostPageActionType.IsMyAccountViewNewsletterPage, _MainApp?.PageState.CultureID ?? 1);
+                await LoadUserNotifications();
+
+            }
+        }
+
+    }
+
+    async Task LoadUserNotifications()
+    {
+        UserNotifications = await _UserNotificationService.GetUserNotifications(SearchModelUserNotifications);
+    }
+
+    /// <summary>
+    /// Load Items from Database . Invoked first time Or when a new Notification Comes
+    /// Need them to be displayed in Notification Box
+    /// </summary>
+    async Task UpdateReadUserNotifications()
+    {
+        if (ApplicationUser != null)
+        {
+            await _UserNotificationService.UpdateReadUserNotifications(ApplicationUser.Id);
+        }
+    }
+
+    /// <summary>
+    /// When Field has Changed from List, Reload Items as a Callback from Page Child Component
+    /// </summary>
+    async Task OnChangePageUserNotifications(int NewPage)
+    {
+        SearchModelUserNotifications.Page = NewPage;
+        await LoadUserNotifications();
+        StyleDivUserNotifications = "display: block";
+    }
+    /// <summary>
+    /// Refresh Current User. Invoked First Time To display My Account Box Info and From Childs when user is Loged out
+    /// </summary>
+    async Task RefreshUser()
+    {
+        Authentication = await _AuthenticationStateTask;
+        if (Authentication.User.Identity.IsAuthenticated)
+        {
+            if (!_MainApp.PageState.IsBlazorConnected && !string.IsNullOrEmpty(thisname) && !string.IsNullOrEmpty(_MainApp.PageState.CacheKeyGuid) && !string.IsNullOrEmpty(Authentication.User.Identity.Name))
+            {
+                var key = $"{_MainApp.PageState.CacheKeyGuid}{nameof(_ApplicationUserService.GetApplicationUserByUserName)}{Authentication.User.Identity.Name}{thisname}";
+                if (!CachedKeys.Any(p => p == key)) { CachedKeys.Add(key); }
+                ApplicationUser = await _MemoryCache.GetOrCreateAsync(key, async entry =>
+                {
+                    entry.SetOptions(new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(4) }.AddExpirationToken(new CancellationChangeToken(new CancellationTokenSource(TimeSpan.FromSeconds(4)).Token)));
+                    return await _ApplicationUserService.GetApplicationUserByUserName(Authentication.User.Identity.Name);
+                });
+            }
+            else
+            {
+                ApplicationUser = await _ApplicationUserService.GetApplicationUserByUserName(Authentication.User.Identity.Name);
+            }
+
+            //await _SignInManager.UserManager.FindByNameAsync(Authentication.User.Identity.Name);
+        }
+        else
+        {
+            ApplicationUser = null;
+        }
+    }
+    /// <summary>
+    /// Refresh first time and after Navigation has Changed :ex: From Admin to Front
+    /// </summary>
+    async Task Refresh()
+    {
+        ResetSomeNullParametersToDefaultValues();
+        var tasks = new List<Task>();
+        var LoadZonesTask = LoadZones(); tasks.Add(LoadZonesTask);
+        var LoadDepartmentsTask = LoadDepartments(); tasks.Add(LoadDepartmentsTask);
+        var LoadProductCategoriesTask = LoadProductCategories();
+        var LoadCulturesTask = LoadCultures();
+        var RefreshUserTask = RefreshUser(); tasks.Add(RefreshUserTask);
+        if (_Settings.Value.HasProducts)
+        {
+            tasks.Add(LoadProductCategoriesTask);
+        }
+        if (_Settings.Value.HasCultures)
+        {
+            tasks.Add(LoadCulturesTask);
+        }
+        await Task.WhenAll(tasks);
+
+        StateHasChanged();
+        tasks = new List<Task>();
+        if (_Settings.Value.HasShoppingCart)
+        {
+            tasks.Add(LoadShoppingCartItems());
+        }
+        if (_Settings.Value.HasProductFavorites)
+        {
+            tasks.Add(LoadProductFavorites());
+        }
+        if (_Settings.Value.HasProductsComparator)
+        {
+            tasks.Add(LoadProductComparator());
+        }
+        if (tasks.Count() > 0)
+        {
+            await Task.WhenAll(tasks);
+            StateHasChanged();
+        }
+        await LoadHostPages();
+        await LoadHostPagesMyAccount();
+        if (_Settings.Value.HasRecentlyVisitedProducts)
+        {
+            await LoadRecentlyVisitedProduts();
+        }
+    }
+    /// <summary>
+    /// Invoke Javascript Functions only After Render: SEO, Captcha,etc
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+
+        }
+        if (!IsSetMainAnaliticsScript)
+        {
+            IsSetMainAnaliticsScript = true;
+            await _JsRuntime.InvokeAsync<string>("SetMainAnaliticsScript", TimeSpan.FromSeconds(3), _MainApp.PageState.GoogleEcommerceCode, _MainApp.PageState.FacebokPixelCode);
+        }
+        if (IsClearMemoryCache)
+        {
+            IsClearMemoryCache = false;
+            ClearMemoryCache(true);
+        }
+        if (!IsSetLoadScriptCarousel && _MainApp?.PageState?.IsHomePage == true && _MainApp.PageState != null && _Settings.Value.HasBanners && Banners?.Count() > 0)
+        {
+            IsSetLoadScriptCarousel = true;
+            try
+            {
+                await _JsRuntime.InvokeAsync<string>("InitializeCarousel", TimeSpan.FromSeconds(3), "HomePageBannerCarousel");
+            }
+            catch { }
+        }
+        if (IsScriptSlickLoaded && !IsSetLoadScriptProductSlickDistroy && _MainApp.PageState != null && _Settings.Value.HasRecentlyVisitedProducts && RecentlyVisitedProducts?.Count() > 0)
+        {
+            IsSetLoadScriptProductSlickDistroy = true;
+            try
+            {
+                await _JsRuntime.InvokeAsync<string>("UnInitializeOwlCarousel", TimeSpan.FromSeconds(3), "ProdRecentVisited");
+            }
+            catch { }
+        }
+        if (IsScriptSlickLoaded && !IsSetLoadScriptProductSlick && _MainApp.PageState != null && _Settings.Value.HasRecentlyVisitedProducts && RecentlyVisitedProducts?.Count() > 0)
+        {
+            IsSetLoadScriptProductSlick = true;
+            try
+            {
+                var ok = await _JsRuntime.InvokeAsync<bool>("InitializeOwlCarousel", TimeSpan.FromSeconds(3), "ProdRecentVisited");
+                if (!ok && MaxScriptLoad <= 3)
+                {
+                    MaxScriptLoad++;
+                    IsSetLoadScriptProductSlick = false;
+                }
+            }
+            catch { }
+        }
+        if (!IsSetLoadScriptDropdowns && _MainApp?.PageState != null && CanLoadExternalComponents)
+        {
+            IsSetLoadScriptDropdowns = true;
+            try
+            {
+                await _JsRuntime.InvokeAsync<string>("InitializeDefault", TimeSpan.FromSeconds(3));
+            }
+            catch { }
+        }
+
+        if (IsScriptLightBoxLoaded && !IsSetLoadScripLightBox && _MainApp.PageState != null && CanLoadExternalComponents)
+        {
+            IsSetLoadScripLightBox = true;
+            try
+            {
+                await _JsRuntime.InvokeAsync<string>("InitializeLightBox", TimeSpan.FromSeconds(3));
+            }
+            catch { }
+        }
+
+    }
+    /// <summary>
+    /// DisplayShoppingCarRememberPopup
+    /// </summary>
+    public async Task DisplayShoppingCarRememberPopup()
+    {
+        try
+        {
+            if (_Settings.Value.HasShoppingCartRememberPopUp && _Settings.Value.HasShoppingCart && _Settings.Value.HasVouchers && ShoppingCartItems?.Any() == true && !ShoppingCartItems.HasAlreadyVoucher && ZoneShoppingRememberPopUp != null)
+            {
+                var ShoppingCartRememberPopUpShown = await LocalStorage.GetItemAsync<string>("ShoppingCartRememberPopUpShown");
+                try
+                {
+                    if (!string.IsNullOrEmpty(ShoppingCartRememberPopUpShown))
+                    {
+                        ShoppingCartRememberPopUpShown = _Protector.Unprotect(ShoppingCartRememberPopUpShown);
+                    }
+                }
+                catch
+                {
+                    ShoppingCartRememberPopUpShown = null;
+                }
+                DateTime ShoppingCartRememberPopUpShownDate;
+                DateTime.TryParse(ShoppingCartRememberPopUpShown, out ShoppingCartRememberPopUpShownDate);
+
+                if (string.IsNullOrEmpty(ShoppingCartRememberPopUpShown) || ShoppingCartRememberPopUpShownDate.Date != DateTime.Today)
+                {
+                    var ShoppingCartAccessed = await LocalStorage.GetItemAsync<string>("ShoppingCartAccessed");
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(ShoppingCartAccessed))
+                        {
+                            ShoppingCartAccessed = _Protector.Unprotect(ShoppingCartAccessed).ToString();
+                        }
+                    }
+                    catch
+                    {
+                        ShoppingCartAccessed = null;
+                    }
+                    DateTime ShoppingCartAccessedDate;
+
+                    if (DateTime.TryParse(ShoppingCartAccessed, out ShoppingCartAccessedDate))
+                    {
+                        if (ShoppingCartAccessedDate.Date == DateTime.Today)
+                        {
+                            int minutesToWaitInt = 0;
+                            if (int.TryParse(_MainApp.PageState.PopupVoucherMinutesToShow, out minutesToWaitInt))
+                            {
+                                if ((DateTime.Now - ShoppingCartAccessedDate).Minutes >= minutesToWaitInt)
+                                {
+                                    await LocalStorage.SetItemAsync("ShoppingCartRememberPopUpShown", _Protector.Protect(DateTime.Now.ToString()));
+                                    ShowPopupShoppingCartRemember = true;
+                                    await _JsRuntime.InvokeAsync<object>("ShowModal", "ShoppingCartRememberPopUpModal");
+                                    StateHasChanged();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        catch { }
+    }
+    /// <summary>
+    /// AddPopupVoucherToShopingCart
+    /// </summary>
+    public async Task AddPopupVoucherToShopingCart()
+    {
+        await _JsRuntime.InvokeAsync<object>("CloseModal", "ShoppingCartRememberPopUpModal");
+        var item = new ShoppingCartItem();
+        bool isFound = false; string userID = "";
+        Authentication = await _AuthenticationStateTask;
+        if (Authentication.User.Identity.IsAuthenticated)
+        {
+            ApplicationUser = await _ApplicationUserService.GetApplicationUserByUserName(Authentication.User.Identity.Name);
+            if (ApplicationUser != null)
+            {
+                userID = item.ApplicationUserID = ApplicationUser.Id;
+                isFound = true;
+            }
+        }
+        if (!isFound)
+        {
+            var anonimousCookie = _MainApp?.PageState?.AnonimousIdentityCookie;
+            if (!string.IsNullOrEmpty(anonimousCookie))
+            {
+                userID = item.AnonimousUserID = anonimousCookie;
+                isFound = true;
+            }
+        }
+        if (isFound && _Settings.Value.HasVouchers && _Settings.Value.HasShoppingCartRememberPopUp && _Settings.Value.HasShoppingCart)
+        {
+            var voucherDiscount = await _WebsiteDBSettingService.GetWebsiteDBSettingByType(WebsiteDBSettingTypeAction.IsPopupVoucherDiscount, 0);
+            var voucherValidMinutes = await _WebsiteDBSettingService.GetWebsiteDBSettingByType(WebsiteDBSettingTypeAction.IsPopupVoucherValidMinutes, 0);
+            int voucherDiscountInt; int voucherValidMinutesInt;
+            if (voucherDiscount != null && int.TryParse(voucherDiscount.Description, out voucherDiscountInt) && int.TryParse(voucherValidMinutes.Description, out voucherValidMinutesInt))
+            {
+                if (voucherDiscountInt > 0 && voucherValidMinutesInt > 0)
+                {
+                    var voucher = new Voucher()
+                    {
+                        CultureID = _MainApp.PageState.CultureID,
+                        VoucherTypeID = 5,
+                        DiscountPercent = voucherDiscountInt,
+                        UseNrDefault = 1,
+                        UseNr = 0,
+                        Title = Guid.NewGuid().ToString().Substring(0, 8),
+                        ExpiringDate = DateTime.Now.AddMinutes(voucherValidMinutesInt),
+                        Description = "Pop-up"
+                    };
+
+                    var voucherID = await _VoucherService.InsertVoucher(voucher);
+
+                    if (voucherID.HasValue)
+                    {
+                        item.VoucherID = voucherID;
+                        item.Title = voucher.Title;
+                        item.Price = 0; // Voucher Percent Calculated By SQL Triggers
+
+                        if (await _ShoppingCartService.AddShoppingCartItemVoucher(item))
+                        {
+                            await RefreshShoppingCartItems();
+                            _NavigationManager.NavigateTo(HostPageShoppingCart != null ? HostPageShoppingCart.HostPath : "/");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Reset Some Fields to Default Values and Initialize Item
+    /// </summary>
+    void ResetSomeNullParametersToDefaultValues()
+    {
+        SearchModelShoppingCartItems.PageSize = SearchModelShoppingCartItems.PageSize ?? _Settings.Value.FrontShoppingCartBoxPageSize;
+        SearchModelShoppingCartItems.Sort = SearchModelShoppingCartItems.Sort ?? DefaultSorting;
+    }
+    /// <summary>
+    /// Load as a Dynamic Entity by Search Model. Invoked First Time by Child
+    /// </summary>
+    public async Task OnChangedLoadBannersOnHomePage()
+    {
+        IsSetLoadScriptCarousel = false;
+        await LoadHomePageBanners();
+        StateHasChanged();
+    }
+    /// <summary>
+    /// Refresh When Culture Has Changed. Invoked from Childs Pages
+    /// </summary>
+    public async Task OnChangedCultureRefresh()
+    {
+        IsSetLoadScriptProductSlickDistroy = false;
+        await Refresh();
+        IsSetLoadScriptCarousel = false;
+        IsSetLoadScriptDropdowns = false;
+        IsSetLoadScriptProductSlick = false;
+        IsScriptLightBoxLoaded = false;
+        StateHasChanged();// Re-render Layout
+    }
+
+    /// <summary>
+    /// Refresh When Culture Has Changed. Invoked from Childs Pages
+    /// </summary>
+    public async Task OnChangedUserRefresh()
+    {
+        await RefreshUser();
+        StateHasChanged();// Re-render Layout
+    }
+    /// <summary>
+    /// Refresh When Items Has Changed. Invoked from Childs Pages
+    /// </summary>
+    public async Task OnChangedRefreshShoppingCart()
+    {
+        await RefreshShoppingCartItems();
+        StateHasChanged(); // Re-render Layout
+    }
+    /// <summary>
+    /// Refresh When Items Has Changed. Invoked from Childs Pages
+    /// </summary>
+    public async Task OnChangedRefreshProductFavorites()
+    {
+        await LoadProductFavorites();
+        StateHasChanged(); // Re-render Layout
+    }
+    /// <summary>
+    /// Refresh When Items Has Changed. Invoked from Childs Pages
+    /// </summary>
+    public async Task OnChangedRefreshProductComparator()
+    {
+        await LoadProductComparator();
+        StateHasChanged(); // Re-render Layout
+    }
+    /// <summary>
+    /// Refresh When Items Has Changed. Invoked from Childs Pages
+    /// </summary>
+    public async Task OnChangedRefreshRecentlyVisitedProducts()
+    {
+        IsSetLoadScriptProductSlickDistroy = false;
+        await LoadRecentlyVisitedProduts();
+        IsSetLoadScriptProductSlick = false;
+    }
+    /// <summary>
+    /// StateHasChanged. Invoked from Childs Pages
+    /// </summary>
+    public void OnChangedLayoutStateHasChanged()
+    {
+        StateHasChanged();// Re-render Layout
+    }
+    /// <summary>
+    /// Refresh When User Log In or Register from Login Page or ShoppingCart Page
+    /// </summary>
+    public async Task OnChangeMigrateAnonimousEntities()
+    {
+        bool rerender = false;
+        if (_Settings.Value.HasUsers && (_Settings.Value.HasShoppingCart || _Settings.Value.HasProductsComparator || _Settings.Value.HasProductFavorites))
+        {
+            if (ApplicationUser != null)
+            {
+                if (_Settings.Value.HasShoppingCart)
+                {
+                    await _ShoppingCartService.MigrateAnonimousShoppingCart(ApplicationUser.Id, _MainApp?.PageState?.AnonimousIdentityCookie);
+                    await RefreshShoppingCartItems();
+                    rerender = true;
+                }
+                if (_Settings.Value.HasProductFavorites)
+                {
+                    await _ProductFavoriteService.MigrateAnonimousProductFavorites(ApplicationUser.Id, _MainApp?.PageState?.AnonimousIdentityCookie);
+                    await LoadProductFavorites();
+                    rerender = true;
+                }
+                if (_Settings.Value.HasProductsComparator)
+                {
+                    await _ProductComparatorService.MigrateAnonimousProductComparators(ApplicationUser.Id, _MainApp?.PageState?.AnonimousIdentityCookie);
+                    await LoadProductComparator();
+                    rerender = true;
+                }
+                if (_Settings.Value.HasProductQuickSearch)
+                {
+                    await _UserSearchService.MigrateAnonimousUserSearches(ApplicationUser.Id, _MainApp?.PageState?.AnonimousIdentityCookie);
+
+                    rerender = true;
+                }
+                if (rerender)
+                {
+                    StateHasChanged(); // Re-render Layout
+                }
+            }
+
+        }
+    }
+
+    #endregion
+
+    #region Load
+    /// <summary>
+    /// Load Items from Database. Invoked first time or after navigatation
+    /// </summary>
+    async Task LoadDepartments()
+    {
+        if (DepartmentPlaceActions?.Count() > 0)
+        {
+            if (!_MainApp.PageState.IsBlazorConnected && !IsRendered && !string.IsNullOrEmpty(thisname) && !string.IsNullOrEmpty(_MainApp.PageState.CacheKeyGuid))
+            {
+                var key = $"{_MainApp.PageState.CacheKeyGuid}{nameof(_DepartmentService.GetPublishedDepartmentsByPlaces)}{thisname}";
+                if (!CachedKeys.Any(p => p == key)) { CachedKeys.Add(key); }
+                Departments = await _MemoryCache.GetOrCreateAsync(key, async entry =>
+                {
+                    entry.SetOptions(new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(4) }.AddExpirationToken(new CancellationChangeToken(new CancellationTokenSource(TimeSpan.FromSeconds(4)).Token)));
+                    return await _DepartmentService.GetPublishedDepartmentsByPlaces(DepartmentPlaceActions, _MainApp.PageState.CultureID);
+                });
+            }
+            else
+            {
+                Departments = await _DepartmentService.GetPublishedDepartmentsByPlaces(DepartmentPlaceActions, _MainApp.PageState.CultureID);
+            }
+        }
+    }
+    /// <summary>
+    /// Load Items from Database. Invoked first time or after navigatation
+    /// </summary>
+    async Task LoadProductCategories()
+    {
+        if (!_MainApp.PageState.IsBlazorConnected && !IsRendered && !string.IsNullOrEmpty(thisname) && !string.IsNullOrEmpty(_MainApp.PageState.CacheKeyGuid))
+        {
+            var key = $"{_MainApp.PageState.CacheKeyGuid}{nameof(_ProductCategoryService.GetPublishedProductCategories)}{thisname}";
+            if (!CachedKeys.Any(p => p == key)) { CachedKeys.Add(key); }
+            ProductCategories = await _MemoryCache.GetOrCreateAsync(key, async entry =>
+            {
+                entry.SetOptions(new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(4) }.AddExpirationToken(new CancellationChangeToken(new CancellationTokenSource(TimeSpan.FromSeconds(4)).Token)));
+                return await _ProductCategoryService.GetPublishedProductCategories(_MainApp.PageState.CultureID);
+            });
+        }
+        else
+        {
+            ProductCategories = await _ProductCategoryService.GetPublishedProductCategories(_MainApp.PageState.CultureID);
+        }
+    }
+    /// <summary>
+    /// Load Items from Database. Invoked first time or after navigatation
+    /// </summary>
+    async Task LoadCultures()
+    {
+        if (!_MainApp.PageState.IsBlazorConnected && !IsRendered && !string.IsNullOrEmpty(thisname) && !string.IsNullOrEmpty(_MainApp.PageState.CacheKeyGuid))
+        {
+            var key = $"{_MainApp.PageState.CacheKeyGuid}{nameof(_SharedService.GetCulturesAvailableForHomeDepartments)}{thisname}";
+            if (!CachedKeys.Any(p => p == key)) { CachedKeys.Add(key); }
+            Cultures = await _MemoryCache.GetOrCreateAsync(key, async entry =>
+            {
+                entry.SetOptions(new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(4) }.AddExpirationToken(new CancellationChangeToken(new CancellationTokenSource(TimeSpan.FromSeconds(4)).Token)));
+                return await _SharedService.GetCulturesAvailableForHomeDepartments();
+            });
+        }
+        else
+        {
+            Cultures = await _SharedService.GetCulturesAvailableForHomeDepartments();
+        }
+    }
+    /// <summary>
+    /// Load Items from Database. Invoked first time or after navigatation
+    /// </summary>
+    async Task LoadZones()
+    {
+        if (ZoneTypeActions?.Count() > 0)
+        {
+            if (!_MainApp.PageState.IsBlazorConnected && !IsRendered && !string.IsNullOrEmpty(thisname) && !string.IsNullOrEmpty(_MainApp.PageState.CacheKeyGuid))
+            {
+                var key = $"{_MainApp.PageState.CacheKeyGuid}{nameof(_ZoneService.GetZonesByTypes)}{thisname}";
+                if (!CachedKeys.Any(p => p == key)) { CachedKeys.Add(key); }
+                Zones = await _MemoryCache.GetOrCreateAsync(key, async entry =>
+                {
+                    entry.SetOptions(new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(4) }.AddExpirationToken(new CancellationChangeToken(new CancellationTokenSource(TimeSpan.FromSeconds(4)).Token)));
+                    return await _ZoneService.GetZonesByTypes(ZoneTypeActions, _MainApp.PageState.CultureID);
+                });
+            }
+            else
+            {
+                Zones = await _ZoneService.GetZonesByTypes(ZoneTypeActions, _MainApp.PageState.CultureID);
+            }
+            ZoneShoppingRememberPopUp = Zones?.FirstOrDefault(p => p.ZoneType?.ZoneTypeAction == ZoneTypeAction.IsShoppingRememberPopUp);
+        }
+    }
+    /// <summary>
+    /// Load Items from Database. Invoked first time or after navigatation
+    /// </summary>
+    async Task LoadHostPages()
+    {
+        var types = new List<HostPageActionType>() { HostPageActionType.IsLoginPage, HostPageActionType.IsShoppingCartPage, HostPageActionType.IsSearchPage, HostPageActionType.IsMyAccountProductFavoritesPage, HostPageActionType.IsMyAccountProductComparatorPage, HostPageActionType.IsProductFavoritesPage, HostPageActionType.IsProductComparatorPage };
+        List<HostPage> hostPages;
+        if (!_MainApp.PageState.IsBlazorConnected && !IsRendered && !string.IsNullOrEmpty(thisname) && !string.IsNullOrEmpty(_MainApp.PageState.CacheKeyGuid))
+        {
+            var key = $"{_MainApp.PageState.CacheKeyGuid}{nameof(_HostPageService.GetHostPagesByActionTypes)}{thisname}";
+            if (!CachedKeys.Any(p => p == key)) { CachedKeys.Add(key); }
+            hostPages = await _MemoryCache.GetOrCreateAsync(key, async entry =>
+            {
+                entry.SetOptions(new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(4) }.AddExpirationToken(new CancellationChangeToken(new CancellationTokenSource(TimeSpan.FromSeconds(4)).Token)));
+                return await _HostPageService.GetHostPagesByActionTypes(types, _MainApp.PageState.CultureID);
+            });
+        }
+        else
+        {
+            hostPages = await _HostPageService.GetHostPagesByActionTypes(types, _MainApp.PageState.CultureID);
+        }
+        if (hostPages != null)
+        {
+            HostPageLogin = hostPages.Where(p => p.ActionType == HostPageActionType.IsLoginPage).FirstOrDefault();
+            HostPageSearch = hostPages.Where(p => p.ActionType == HostPageActionType.IsSearchPage).FirstOrDefault();
+            HostPageShoppingCart = hostPages.Where(p => p.ActionType == HostPageActionType.IsShoppingCartPage).FirstOrDefault();
+            HostPageMyAccountProductFavorites = hostPages.Where(p => p.ActionType == HostPageActionType.IsMyAccountProductFavoritesPage).FirstOrDefault();
+            HostPageMyAccountProductComparator = hostPages.Where(p => p.ActionType == HostPageActionType.IsMyAccountProductComparatorPage).FirstOrDefault();
+            HostPageProductFavorites = hostPages.Where(p => p.ActionType == HostPageActionType.IsProductFavoritesPage).FirstOrDefault();
+            HostPageProductComparator = hostPages.Where(p => p.ActionType == HostPageActionType.IsProductComparatorPage).FirstOrDefault();
+        }
+
+        var typesDefaultCulture = new List<HostPageActionType>() { HostPageActionType.IsAdminPage };
+        List<HostPage> hostPagesByTypesDefaultCulture;
+        if (!_MainApp.PageState.IsBlazorConnected && !IsRendered && !string.IsNullOrEmpty(thisname) && !string.IsNullOrEmpty(_MainApp.PageState.CacheKeyGuid))
+        {
+            var key2 = $"{_MainApp.PageState.CacheKeyGuid}{nameof(_HostPageService.GetHostPagesByActionTypesAndByAdminDefaultCulture)}{thisname}";
+
+            if (!CachedKeys.Any(p => p == key2)) { CachedKeys.Add(key2); }
+            hostPagesByTypesDefaultCulture = await _MemoryCache.GetOrCreateAsync(key2, async entry =>
+            {
+                entry.SetOptions(new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(4) }.AddExpirationToken(new CancellationChangeToken(new CancellationTokenSource(TimeSpan.FromSeconds(4)).Token)));
+                return await _HostPageService.GetHostPagesByActionTypesAndByAdminDefaultCulture(typesDefaultCulture);
+            });
+        }
+        else
+        {
+            hostPagesByTypesDefaultCulture = await _HostPageService.GetHostPagesByActionTypesAndByAdminDefaultCulture(typesDefaultCulture);
+        }
+
+        if (hostPagesByTypesDefaultCulture != null)
+        {
+            HostPageAdmin = hostPagesByTypesDefaultCulture.Where(p => p.ActionType == HostPageActionType.IsAdminPage).FirstOrDefault();
+        }
+    }
+    /// <summary>
+    /// Load Items from Database. Invoked first time or after navigatation
+    /// Need them to be displayed in My Account Box
+    /// </summary>
+    async Task LoadHostPagesMyAccount()
+    {
+        if (!_MainApp.PageState.IsBlazorConnected && !IsRendered && !string.IsNullOrEmpty(thisname) && !string.IsNullOrEmpty(_MainApp.PageState.CacheKeyGuid))
+        {
+            var key = $"{_MainApp.PageState.CacheKeyGuid}{nameof(_HostPageService.GetAccountManageHostPagesAvailableByType)}{thisname}";
+            if (!CachedKeys.Any(p => p == key)) { CachedKeys.Add(key); }
+            HostPagesAccount = await _MemoryCache.GetOrCreateAsync(key, async entry =>
+            {
+                entry.SetOptions(new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(4) }.AddExpirationToken(new CancellationChangeToken(new CancellationTokenSource(TimeSpan.FromSeconds(4)).Token)));
+                return await _HostPageService.GetAccountManageHostPagesAvailableByType(_MainApp.PageState.CultureID);
+            });
+        }
+        else
+        {
+            HostPagesAccount = await _HostPageService.GetAccountManageHostPagesAvailableByType(_MainApp.PageState.CultureID);
+        }
+
+        HostPageMyAccount = HostPagesAccount?.Where(p => p.ActionType == HostPageActionType.IsMyAccountPage).FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Load Items from Database By User ID or Anonimous Cookie. Invoked first time or after navigatation
+    /// Need them to be displayed in ShoppingCartBox
+    /// Anonimous Cookie is set When user will access first time the Website in Host Controller
+    /// </summary>
+    async Task LoadShoppingCartItems()
+    {
+        string userID = null;
+        bool isFound = false;
+        if (ApplicationUser != null && _Settings.Value.HasUsers)
+        {
+            SearchModelShoppingCartItems.ApplicationUserID = userID = ApplicationUser.Id;
+            SearchModelShoppingCartItems.UserDiscount = ApplicationUser.Discount;
+            isFound = true;
+        }
+        else
+        {
+            SearchModelShoppingCartItems.ApplicationUserID = ""; SearchModelShoppingCartItems.UserDiscount = 0;
+        }
+        if (!isFound)
+        {
+            var anonimousCookie = _MainApp?.PageState?.AnonimousIdentityCookie;
+            if (!string.IsNullOrEmpty(anonimousCookie))
+            {
+                userID = anonimousCookie;
+                isFound = true;
+            }
+        }
+        if (isFound)
+        {
+            SearchModelShoppingCartItems.CultureID = _MainApp.PageState.CultureID;
+            SearchModelShoppingCartItems.UserID = userID;
+            if (!_MainApp.PageState.IsBlazorConnected && !IsRendered && !string.IsNullOrEmpty(thisname) && !string.IsNullOrEmpty(_MainApp.PageState.CacheKeyGuid))
+            {
+                var key = $"{_MainApp.PageState.CacheKeyGuid}{nameof(_ShoppingCartService.GetShoppingCartItems)}{thisname}{userID}";
+                if (!CachedKeys.Any(p => p == key)) { CachedKeys.Add(key); }
+                ShoppingCartItems = await _MemoryCache.GetOrCreateAsync(key, async entry =>
+                {
+                    entry.SetOptions(new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(4) }.AddExpirationToken(new CancellationChangeToken(new CancellationTokenSource(TimeSpan.FromSeconds(4)).Token)));
+                    return await _ShoppingCartService.GetShoppingCartItems(SearchModelShoppingCartItems);
+                });
+            }
+            else
+            {
+                ShoppingCartItems = await _ShoppingCartService.GetShoppingCartItems(SearchModelShoppingCartItems);
+            }
+
+        }
+        else { ShoppingCartItems = new PaginatedListGV<ShoppingCartItem>(new List<ShoppingCartItem>()); }
+    }
+
+    /// <summary>
+    /// Load Items from Database By User ID or Anonimous Cookie. Invoked first time or after navigatation
+    /// Need them to be displayed in Box
+    /// Anonimous Cookie is set When user will access first time the Website in Host Controller
+    /// </summary>
+    async Task LoadProductFavorites()
+    {
+        string userID = null;
+        bool isFound = false;
+
+        if (ApplicationUser != null && _Settings.Value.HasUsers)
+        {
+            userID = ApplicationUser.Id;
+            isFound = true;
+
+        }
+        if (!isFound)
+        {
+            var anonimousCookie = _MainApp?.PageState?.AnonimousIdentityCookie;
+            if (!string.IsNullOrEmpty(anonimousCookie))
+            {
+                userID = anonimousCookie;
+                isFound = true;
+            }
+        }
+        if (isFound)
+        {
+            if (!_MainApp.PageState.IsBlazorConnected && !IsRendered && !string.IsNullOrEmpty(thisname) && !string.IsNullOrEmpty(_MainApp.PageState.CacheKeyGuid))
+            {
+                var key = $"{_MainApp.PageState.CacheKeyGuid}{nameof(_ProductFavoriteService.GetProductFavoritesCount)}{thisname}{userID}";
+                if (!CachedKeys.Any(p => p == key)) { CachedKeys.Add(key); }
+                ProductFavoritesCount = await _MemoryCache.GetOrCreateAsync(key, async entry =>
+                {
+                    entry.SetOptions(new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(4) }.AddExpirationToken(new CancellationChangeToken(new CancellationTokenSource(TimeSpan.FromSeconds(4)).Token)));
+                    return await _ProductFavoriteService.GetProductFavoritesCount(userID, _MainApp.PageState.CultureID);
+                });
+            }
+            else
+            {
+                ProductFavoritesCount = await _ProductFavoriteService.GetProductFavoritesCount(userID, _MainApp.PageState.CultureID);
+            }
+        }
+        else { ProductFavoritesCount = 0; }
+    }
+
+    /// <summary>
+    /// Load Items from Database By User ID or Anonimous Cookie. Invoked first time or after navigatation
+    /// Need them to be displayed in Box
+    /// Anonimous Cookie is set When user will access first time the Website in Host Controller
+    /// </summary>
+    async Task LoadProductComparator()
+    {
+        string userID = null;
+        bool isFound = false;
+
+        if (ApplicationUser != null && _Settings.Value.HasUsers)
+        {
+            userID = ApplicationUser.Id;
+            isFound = true;
+
+        }
+        if (!isFound)
+        {
+            var anonimousCookie = _MainApp?.PageState?.AnonimousIdentityCookie;
+            if (!string.IsNullOrEmpty(anonimousCookie))
+            {
+                userID = anonimousCookie;
+                isFound = true;
+            }
+        }
+        if (isFound)
+        {
+            if (!_MainApp.PageState.IsBlazorConnected && !IsRendered && !string.IsNullOrEmpty(thisname) && !string.IsNullOrEmpty(_MainApp.PageState.CacheKeyGuid))
+            {
+                var key = $"{_MainApp.PageState.CacheKeyGuid}{nameof(_ProductComparatorService.GetProductComparatorCount)}{thisname}";
+                if (!CachedKeys.Any(p => p == key)) { CachedKeys.Add(key); }
+                ProductComparatorsCount = await _MemoryCache.GetOrCreateAsync(key, async entry =>
+                {
+                    entry.SetOptions(new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(4) }.AddExpirationToken(new CancellationChangeToken(new CancellationTokenSource(TimeSpan.FromSeconds(4)).Token)));
+                    return await _ProductComparatorService.GetProductComparatorCount(userID, _MainApp.PageState.CultureID);
+                });
+            }
+            else
+            {
+                ProductComparatorsCount = await _ProductComparatorService.GetProductComparatorCount(userID, _MainApp.PageState.CultureID);
+            }
+
+        }
+        else { ProductComparatorsCount = 0; }
+    }
+
+    /// <summary>
+    /// Load as a Dynamic Entity by Search Model. Invoked First Time and when Filters are changed
+    /// </summary>
+    async Task LoadRecentlyVisitedProduts()
+    {
+        var anonimousCookie = _MainApp?.PageState?.AnonimousIdentityCookie;
+        if (!string.IsNullOrEmpty(anonimousCookie))
+        {
+            var searchModel = new SearchModel();
+            searchModel.UserID = anonimousCookie;
+            searchModel.CultureID = _MainApp.PageState.CultureID;
+            if (ApplicationUser != null)
+            {
+                searchModel.UserDiscount = ApplicationUser.Discount;
+                searchModel.ApplicationUserID = ApplicationUser.Id;
+            }
+            if (!_MainApp.PageState.IsBlazorConnected && !IsRendered && !string.IsNullOrEmpty(thisname) && !string.IsNullOrEmpty(_MainApp.PageState.CacheKeyGuid))
+            {
+                var key = $"{_MainApp.PageState.CacheKeyGuid}{nameof(_RecentlyVisitedProductService.GetRecentlyVisitedProducts)}{thisname}";
+                if (!CachedKeys.Any(p => p == key)) { CachedKeys.Add(key); }
+                RecentlyVisitedProducts = await _MemoryCache.GetOrCreateAsync(key, async entry =>
+                {
+                    entry.SetOptions(new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(4) }.AddExpirationToken(new CancellationChangeToken(new CancellationTokenSource(TimeSpan.FromSeconds(4)).Token)));
+                    return await _RecentlyVisitedProductService.GetRecentlyVisitedProducts(searchModel);
+                });
+            }
+            else
+            {
+                RecentlyVisitedProducts = await _RecentlyVisitedProductService.GetRecentlyVisitedProducts(searchModel);
+            }
+
+        }
+        else { RecentlyVisitedProducts = new PaginatedListGV<RecentlyVisitedProduct>(); }
+    }
+    /// <summary>
+    /// Load as a Dynamic Entity by Search Model. Invoked First Time and when Filters are changed
+    /// </summary>
+    async Task LoadHomePageBanners()
+    {
+        // Banners = await _DepartmentService.GetDepartmentFiles(new SearchModel() { LoadHomeDepartmentBanners = true, IsPublished = true, CultureID = _MainApp.PageState.CultureID });
+        if (!_MainApp.PageState.IsBlazorConnected && !IsRendered && !string.IsNullOrEmpty(thisname) && !string.IsNullOrEmpty(_MainApp.PageState.CacheKeyGuid))
+        {
+            var key = $"{_MainApp.PageState.CacheKeyGuid}{nameof(_DepartmentService.LoadHomeDepartmentFilesBanners)}{thisname}";
+            if (!CachedKeys.Any(p => p == key)) { CachedKeys.Add(key); }
+            Banners = await _MemoryCache.GetOrCreateAsync(key, async entry =>
+            {
+                entry.SetOptions(new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(4) }.AddExpirationToken(new CancellationChangeToken(new CancellationTokenSource(TimeSpan.FromSeconds(4)).Token)));
+                return await _DepartmentService.LoadHomeDepartmentFilesBanners(_MainApp.PageState.CultureID);
+            });
+        }
+        else
+        {
+            Banners = await _DepartmentService.LoadHomeDepartmentFilesBanners(_MainApp.PageState.CultureID);
+        }
+    }
+
+    #endregion
+
+    #region FrontEndEvents
+
+    //Departments
+    void OnMouseOverNav(MouseEventArgs e, Department item)
+    {
+        item.AriaExpanded = "true";
+        item.Show = "show";
+    }
+    void OnMouseOutNav(MouseEventArgs e, Department item)
+    {
+        item.AriaExpanded = "false";
+        item.Show = "";
+    }
+
+    void OnMouseOverNavProductCategory(MouseEventArgs e, ProductCategory item)
+    {
+        item.AriaExpanded = "true";
+        item.Show = "show";
+    }
+    void OnMouseOutNavProductCategory(MouseEventArgs e, ProductCategory item)
+    {
+        item.AriaExpanded = "false";
+        item.Show = "";
+    }
+
+    //MyAccount
+    void OnMouseOverNavMyAccount(MouseEventArgs e)
+    {
+        AreaExpandedMyAccount = "true";
+        ShowMyAccount = "show";
+    }
+    void OnMouseOutNavMyAccount(MouseEventArgs e)
+    {
+        AreaExpandedMyAccount = "false";
+        ShowMyAccount = "";
+    }
+
+    #endregion
+
+    #region Logout
+    /// <summary>
+    /// Log Out an User By Calling Controller Logout throigh Javascript in backgroud
+    /// Invoked from My Account Box. A Reference to Dot net is sent
+    /// </summary>
+    async Task Logout()
+    {
+        await Logout(true);
+    }
+    /// <summary>
+    /// Log Out an User By Calling Controller Logout throigh Javascript in backgroud
+    /// Invoked from My Account Box. A Reference to Dot net is sent
+    /// </summary>
+    public async Task Logout(bool redirectWhenLogout)
+    {
+        RedirectWhenLogout = redirectWhenLogout;
+        await _JsRuntime.InvokeAsync<string>("LogOut", "/api/LogInOut/SignOutAsync", DotNetObjectReference.Create(this), nameof(RedirectLogout));
+    }
+    /// <summary>
+    /// Redirect User to Login Page
+    /// Invoked from Javascript after controller will log out the current user
+    /// </summary>
+    [JSInvokable("RedirectLogout")]
+    public async Task RedirectLogout()
+    {
+        _MainApp.SetIsAuthenticationChanging(true);
+        ((ApiAuthenticationStateProvider)_AuthenticationStateProvider).MarkUserAsLoggedOut();
+        _MainApp.SetIsAuthenticationChanging(false);
+        await RefreshUser();
+        if (_Settings.Value.HasShoppingCart)
+        {
+            await RefreshShoppingCartItems();
+        }
+        if (_Settings.Value.HasProductFavorites)
+        {
+            await LoadProductFavorites();
+        }
+        if (_Settings.Value.HasProductsComparator)
+        {
+            await LoadProductComparator();
+        }
+        StateHasChanged();
+        if (RedirectWhenLogout)
+        {
+            RedirectWhenLogout = false;
+            _NavigationManager.NavigateTo(HostPageLogin != null ? HostPageLogin.HostPath : "/");
+        }
+    }
+    #endregion
+
+    #region Search
+
+    /// <summary>
+    /// Navigate to search page
+    /// Invoked keyword selection
+    /// </summary>
+    void NavigateToSearch()
+    {
+        KeySuggestions = null;
+        if (HostPageSearch != null)
+        {
+            var keyPath = "";
+            if (!string.IsNullOrEmpty(Key))
+            {
+                keyPath = "/" + UrlSegmentsKeyNames.key + "/" + KeyHelpers.ConvertKeyWithSpaceToUrlByAsterics(Key);
+            }
+            _NavigationManager.NavigateTo(HostPageSearch.HostPath + keyPath);
+        }
+    }
+    /// <summary>
+    /// When user press enter call NavigateToSearch
+    /// </summary>
+    async Task OnKeyUpSearch(KeyboardEventArgs eventArgs)
+    {
+        if (eventArgs.Key == "Enter")
+        {
+            NavigateToSearch();
+        }
+        else if (eventArgs.Key == "ArrowDown" || eventArgs.Key == "ArrowUp")
+        {
+
+        }
+        else
+        {
+            await LoadKeySuggestions();
+        }
+    }
+
+    /// <summary>
+    /// LoadKeySuggestions when the user write something in search input
+    /// </summary>
+    async Task LoadKeySuggestions()
+    {
+        var keySuggestions = new List<KeySuggestion>();
+        try
+        {
+            if (!string.IsNullOrEmpty(Key) && Key.Trim() != "")
+            {
+                var key = System.Net.WebUtility.HtmlDecode(Key).ToLower();
+
+                var KeyParsed = "";
+                var KeyParsedWithoutLast = "";
+                var LastKeyParsed = "";
+                var Keys = KeyHelpers.ExtractKeyListGroupedBySpace(key);
+
+                if (Keys.Count() > 0)
+                {
+                    KeyParsed = string.Join(' ', Keys);
+                    KeyParsedWithoutLast = Keys.First();
+                    LastKeyParsed = Keys.Last();
+                    if (Keys.Count() > 1)
+                    {
+                        KeyParsedWithoutLast = string.Join(' ', Keys.Where(p => p != Keys.Last()));
+                    }
+                }
+
+                var rets = await _ProductCategoryService.GetProductCategoriesSuggestions(new SearchModel() { CultureID = _MainApp.PageState.CultureID, Keys = Keys, Key = key });
+
+                var searchSuggestions = new List<KeySuggestion>();
+
+                var searchCategoryiesSuggestions = new List<KeySuggestion>();
+
+                var searchFirstKeyMatchesSuggestions = new List<KeySuggestion>();
+                var searchKeyMatchesSuggestions = new List<KeySuggestion>();
+
+                string FirstKey = KeyParsed;
+
+                if (rets?.Count() > 0)
+                {
+                    var KeyParsedWithoutSpace = KeyParsed.Trim();
+
+                    foreach (var item in rets)
+                    {
+                        var title = string.Join("  ", item.Products.Select(p => p.Title.ToLower())) + "  " + item.Title.ToLower();
+                        if (title != null)
+                        {
+                            var titleFormatted = title.Replace("  ", " "); // Double Space is Used in DB too , to separate : ProductCategory Title, ProductTitle, Barcode, etc
+                            var KeysCategories = KeyHelpers.ExtractKeyListGroupedBySpaceNoLimit(titleFormatted);
+                            KeysCategories = KeysCategories?.Where(k => k != ",").ToList();
+                            KeysCategories = KeysCategories?.Where(k => k != "-").ToList();
+                            KeysCategories = KeysCategories?.Distinct().ToList();
+                            if (KeysCategories?.Count() > 0)
+                            {
+
+                                //var test = from k in Keys
+                                //           select new { key = k, MatchedKeys = KeysCategories.Where(kc => kc.Contains(k), Order = Keys.IndexOf(k)) };
+
+                                //if we have single Keys
+                                var PossibleFirstKeysSuggestions = KeysCategories.Where(k => k.StartsWith(KeyParsedWithoutSpace))?.Distinct().Select(p => new { Key = p, Distance = 1, IsSingleKey = true, KeySuggestion = p }).ToList();
+
+                                if ((PossibleFirstKeysSuggestions == null || PossibleFirstKeysSuggestions.Count() == 0) && Keys?.Count() == 1)
+                                {
+                                    // for 1 key if does not start with pressed keys, use contains
+                                    PossibleFirstKeysSuggestions = KeysCategories.Where(k => k.Contains(KeyParsedWithoutSpace))?.Distinct().Select(p => new { Key = p, Distance = 2, IsSingleKey = true, KeySuggestion = p }).ToList();
+                                }
+
+                                // if not look for composed keys
+                                if (PossibleFirstKeysSuggestions == null || PossibleFirstKeysSuggestions.Count() == 0)
+                                {
+                                    PossibleFirstKeysSuggestions = KeysCategories.Where(k => title.Contains(KeyParsedWithoutLast + " " + k) && k.StartsWith(LastKeyParsed))
+                                                                                 ?.Distinct()
+                                                                                 .Select(p => new
+                                                                                 {
+                                                                                     //Key = string.Join(' ', KeysCategories?.Where(ck => Keys.Any(k => k != Keys.Last() && ck.EndsWith(k)) == true)?.Distinct()),
+                                                                                     Key = KeyParsedWithoutLast,
+                                                                                     Distance = 1,
+                                                                                     IsSingleKey = false,
+                                                                                     KeySuggestion = p
+                                                                                 }).ToList();
+
+                                }
+
+                                //}
+                                // Independent Keys
+                                if ((PossibleFirstKeysSuggestions == null || PossibleFirstKeysSuggestions.Count() == 0) && Keys.All(sk => KeysCategories.Any(c => c.Contains(sk))))
+                                {
+                                    PossibleFirstKeysSuggestions = KeysCategories.Where(k => k.Contains(LastKeyParsed) && !Keys.Any(kf => kf == k))
+                                                                                 ?.Distinct()
+                                                                                 .Select(p => new
+                                                                                 {
+                                                                                     Key = string.Join(' ', KeysCategories?.Where(ck => ck != p && Keys.Any(k => k != Keys.Last() && ck.Contains(k)))?.Distinct()?.Take(Keys.Count - 1)),
+                                                                                     Distance = 2,
+                                                                                     IsSingleKey = false,
+                                                                                     KeySuggestion = p
+                                                                                 }).ToList();
+                                }
+
+                                if (PossibleFirstKeysSuggestions != null)
+                                {
+                                    foreach (var itemkey in PossibleFirstKeysSuggestions)
+                                    {
+                                        var firstKey = itemkey.Key;
+                                        if (!itemkey.IsSingleKey && itemkey.Key != itemkey.KeySuggestion)
+                                        {
+                                            firstKey = itemkey.Key + " " + itemkey.KeySuggestion;
+                                        }
+
+                                        // check if the key suggestion is already in Suggestions:
+                                        var tempSegmentKey = searchFirstKeyMatchesSuggestions.Find(p => p.Title == firstKey);
+                                        if (tempSegmentKey == null)
+                                        {
+                                            // if not just add the key
+                                            searchFirstKeyMatchesSuggestions.Add(new KeySuggestion() { Key = firstKey, Title = firstKey, Url = HostPageSearch.HostPath + "/" + UrlSegmentsKeyNames.key + "/" + KeyHelpers.ConvertKeyWithSpaceToUrlByAsterics(firstKey), Matches = 0, Distance = itemkey.Distance });
+                                        }
+                                        else
+                                        {
+                                            //if true increment matches for sorting by matchings
+                                            tempSegmentKey.Matches += 1;
+                                        }
+                                    }
+                                }
+
+                            }
+
+                        }
+                    }
+                    if (searchFirstKeyMatchesSuggestions?.Count() == 0)
+                    {
+                        var tempSegmentKey = searchFirstKeyMatchesSuggestions.Find(p => p.Title == FirstKey);
+                        if (tempSegmentKey == null)
+                        {
+                            // if not just add the key
+                            searchFirstKeyMatchesSuggestions.Add(new KeySuggestion() { Key = FirstKey, Title = FirstKey, Url = HostPageSearch.HostPath + "/" + UrlSegmentsKeyNames.key + "/" + KeyHelpers.ConvertKeyWithSpaceToUrlByAsterics(FirstKey), Matches = 0, Distance = 1 });
+                        }
+                        else
+                        {
+                            //if true increment matches for sorting by matchings
+                            tempSegmentKey.Matches += 1;
+                        }
+                    }
+                    //Second Key Suggestions
+                    // if we have key suggestions order them , get first key
+                    if (searchFirstKeyMatchesSuggestions?.Count() > 0)
+                    {
+                        searchFirstKeyMatchesSuggestions = searchFirstKeyMatchesSuggestions.OrderBy(p => p.Distance).ThenByDescending(p => p.Matches).Distinct().ToList();
+                        FirstKey = searchFirstKeyMatchesSuggestions.First().Title;
+                        var FirstKeySegments = KeyHelpers.ExtractKeyListGroupedBySpaceNoLimit(FirstKey);
+                        var FirstKeyLastSegment = FirstKeySegments.Last();
+                        foreach (var item in rets)
+                        {
+                            var title = string.Join("  ", item.Products.Select(p => p.Title.ToLower())) + "  " + item.Title.ToLower();
+                            if (title != null)
+                            {
+                                var KeysCategories = KeyHelpers.ExtractKeyListGroupedBySpaceNoLimit(title.Replace("  ", " "));
+
+                                var PossibleSecondKeysSuggestions = KeysCategories.Where(k => title.Contains(FirstKeyLastSegment + " " + k) && !FirstKeySegments.Any(fk => fk == k));
+
+                                if (PossibleSecondKeysSuggestions != null)
+                                {
+                                    foreach (var itemkey in PossibleSecondKeysSuggestions)
+                                    {
+                                        var finalKeySuggestion = FirstKey + " " + itemkey;
+
+                                        var tempSegment = searchKeyMatchesSuggestions.Find(p => p.Title == finalKeySuggestion);
+
+                                        if (tempSegment == null)
+                                        {
+                                            searchKeyMatchesSuggestions.Add(new KeySuggestion() { Key = finalKeySuggestion, Title = finalKeySuggestion, Url = HostPageSearch.HostPath + "/" + UrlSegmentsKeyNames.key + "/" + KeyHelpers.ConvertKeyWithSpaceToUrlByAsterics(finalKeySuggestion), Matches = 0, Distance = 1 });
+                                        }
+                                        else
+                                        {
+                                            tempSegment.Matches += 1;
+                                        }
+                                    }
+                                }
+
+                            }
+                        }
+                    }
+
+                }
+
+                // resort
+                if (searchKeyMatchesSuggestions?.Count() > 0)
+                {
+                    searchKeyMatchesSuggestions = searchKeyMatchesSuggestions.OrderBy(p => p.Distance).ThenByDescending(p => p.Matches).Distinct().ToList();
+                }
+
+                // Add Label
+                keySuggestions.Add(new KeySuggestion() { Title = _SharedResource["Search Suggestions"], Url = "" });
+
+                // if we have key suggestions add the first key, with details, else just add the first key to not have an empty rezult.
+                if (searchFirstKeyMatchesSuggestions?.Count() > 0)
+                {
+                    keySuggestions.Add(searchFirstKeyMatchesSuggestions.First());
+                }
+                else
+                {
+                    searchSuggestions.Add(new KeySuggestion() { Key = FirstKey, Title = FirstKey, Url = HostPageSearch.HostPath + "/" + UrlSegmentsKeyNames.key + "/" + KeyHelpers.ConvertKeyWithSpaceToUrlByAsterics(FirstKey) });
+                }
+
+                // For every result add Format Search Suggestions and Categories Suggestions
+                foreach (var item in rets)
+                {
+                    searchSuggestions.Add(new KeySuggestion() { Key = FirstKey, Title = FirstKey + " " + _SharedResource["in"] + " " + item.Title, Url = HostPageSearch.HostPath + "/" + UrlSegmentsKeyNames.category + "/" + item.UrlNice + "/" + UrlSegmentsKeyNames.key + "/" + KeyHelpers.ConvertKeyWithSpaceToUrlByAsterics(FirstKey) });
+                    searchCategoryiesSuggestions.Add(new KeySuggestion() { Key = "", Title = item.Title, Url = item.HostPath });
+                }
+
+                // Add To Final Search Results  Search suggestions : First Key, Search keys In, Another Key suggestions
+                keySuggestions.AddRange(searchSuggestions);
+
+                // Add To Final Search Results Key Matches Suggestions without first key
+                if (searchKeyMatchesSuggestions?.Count() > 0)
+                {
+                    keySuggestions.AddRange(searchKeyMatchesSuggestions.Take(4));
+                }
+
+                // Add To Final Search Results Go To Category Suggestions
+                if (searchCategoryiesSuggestions?.Count() > 0)
+                {
+                    keySuggestions.Add(new KeySuggestion() { Title = _SharedResource["Go To Category"], Url = "" });
+                    keySuggestions.AddRange(searchCategoryiesSuggestions);
+                }
+            }
+        }
+        catch { }
+
+        KeySuggestions = keySuggestions;
+    }
+
+    #endregion
+
+    #region AddToCart
+    /// <summary>
+    /// Reset Shopping Cart Fields. Invoked afther user close the pop-up or when a new Item will be added in shopping cart
+    /// </summary>
+    public void ResetShoppingCartTempParameters()
+    {
+        Product = null;
+        ProductAtributeOptions = null;
+        ProductAtributeOptionals = null;
+        ShoppingCartItem = null;
+        SelectedProductAtributeOption = null;
+        SelectedProductAtributeOptionals = null;
+    }
+
+    /// <summary>
+    /// When Field has Changed from List, Reload Items as a Callback from Page Child Component
+    /// </summary>
+    async Task OnChangePage(int NewPage)
+    {
+        SearchModelShoppingCartItems.Page = NewPage;
+        await LoadShoppingCartItems();
+    }
+    /// <summary>
+    /// Add an item to Shopping Cart for an Anonimous or Authenticated User.
+    /// Invoked from Childs: ProductList, Product Page, etc
+    /// </summary>
+    public async Task AddToCart(ShoppingCartItem item)
+    {
+        ResetShoppingCartTempParameters();
+        if (item != null && item.ProductID.HasValue)
+        {
+            var itemToAdd = (ShoppingCartItem)item.Clone();
+            bool isFound = false;
+            decimal discount = 0;
+            // Get Authenticated user
+            await RefreshUser();
+            if (ApplicationUser != null)
+            {
+                itemToAdd.ApplicationUserID = ApplicationUser.Id;
+                discount = ApplicationUser.Discount;
+                isFound = true;
+            }
+            if (!isFound) // if is not authenticated get anonimous
+            {
+                var anonimousCookie = _MainApp?.PageState?.AnonimousIdentityCookie;
+                if (!string.IsNullOrEmpty(anonimousCookie))
+                {
+                    itemToAdd.AnonimousUserID = anonimousCookie;
+                    isFound = true;
+                }
+            }
+            // Get and Check if Product exists
+            Product = await _ProductService.GetProductWithDetailsForShoppingCart(itemToAdd.ProductID.Value, itemToAdd.AnonimousUserID, itemToAdd.ApplicationUserID, discount);
+
+            if (Product != null)
+            {
+                if (isFound) // if there is an user and is not an robot
+                {
+                    ProductAtributeOptions = Product.ProductAtributes?.Where(p => p.Atribute?.IsProductOptions == true)?.ToList();
+                    ProductAtributeOptionals = Product.ProductAtributes?.Where(p => p.Atribute?.IsProductOptionals == true)?.ToList();
+
+                    // If Product Has Options and the option was not selected display the Option selection Pop-up Ex Size: S,L,XL
+                    if ((_Settings.Value.HasProductOptions && !itemToAdd.ProductAtributeID.HasValue && ProductAtributeOptions.Any())
+                        ||
+                        (_Settings.Value.HasProductOptionals && itemToAdd.ShoppingCartItemOptionals == null && ProductAtributeOptionals.Any())
+                        )
+                    {
+                        //display product option Selection
+                        ShoppingCartItem = itemToAdd;
+                        if (ShoppingCartItem.ShoppingCartItemOptionals == null)
+                        {
+                            ShoppingCartItem.ShoppingCartItemOptionals = new List<ShoppingCartItemOptional>();
+                        }
+                        ShoppingCartItem.Quantity = 1;
+                        await _JsRuntime.InvokeAsync<object>("ShowModal", "ProductionOptionsSelectionModal");
+                        StateHasChanged();
+                    }
+                    else
+                    {
+                        if (await _ShoppingCartService.AddShoppingCartItem(itemToAdd))
+                        {
+                            var variant = "";
+                            if (itemToAdd.ProductAtributeID.HasValue)
+                            {
+                                // GEt SelectedProductAtributeOption to display it in Successfull Pop-up
+                                SelectedProductAtributeOption = ProductAtributeOptions.FirstOrDefault(p => p.ProductAtributeID == itemToAdd.ProductAtributeID);
+                                variant = SelectedProductAtributeOption.AtributeValue.Title;
+                            }
+                            if (itemToAdd.ShoppingCartItemOptionals?.Any() == true && ProductAtributeOptionals?.Any() == true)
+                            {
+                                SelectedProductAtributeOptionals = itemToAdd.ShoppingCartItemOptionals
+                                                                       .Select(s => new ShoppingCartItemOptional
+                                                                       {
+                                                                           ProductAtribute = ProductAtributeOptionals.Where(p => p.ProductAtributeID == s.ProductAtributeID).FirstOrDefault(),
+                                                                           Quantity = s.Quantity
+                                                                       }).ToList();
+
+                                if (SelectedProductAtributeOptionals != null)
+                                {
+                                    variant = string.Join(',', SelectedProductAtributeOptionals.Select(p => p.ProductAtribute?.AtributeValue?.Title));
+                                }
+                            }
+                            await _JsRuntime.InvokeAsync<object>("ShowModal", "AddProductToShoppingCartSharedModal");
+                            StateHasChanged(); // Re-render to display product quick
+                            await _MainApp.OnLayoutChangedRefreshSomeDynamicEntities();
+                            if (_Settings.Value.HasGoogleEcommerce)
+                            {
+                                try
+                                {
+                                    // await _JsRuntime.InvokeVoidAsync("InitGoogleEcommerce", _MainApp.PageState.GoogleEcommerceCode, _MainApp.PageState.Currency);
+                                    var category = !string.IsNullOrEmpty(Product.MainProductCategory?.Title) ? Product.MainProductCategory.Title : "";
+                                    var brand = Product.ProductAtributes?.Where(p => p.Atribute.IsProducers)?.Select(p => p.AtributeValue?.Title).FirstOrDefault();
+                                    brand = !string.IsNullOrEmpty(brand) ? brand : "";
+                                    //await _JsRuntime.InvokeVoidAsync("AddGoogleEcommerceAddProduct", Product.ProductID, Product.Title, category, brand, variant, Product.Price, itemToAdd.Quantity);
+                                    //await _JsRuntime.InvokeVoidAsync("AddGoogleEcommerceEventAddToCart");
+                                    var gtmProducts = new List<GTMProduct>();
+                                    gtmProducts.Add(new GTMProduct() { item_name = Product.Title, item_id = Product.ProductID, item_category = category, item_brand = brand ,item_variant = variant, quantity = itemToAdd.Quantity, price = Product.Price });
+                                    await _JsRuntime.InvokeVoidAsync("GTMAddProductToShoppingCart", TimeSpan.FromSeconds(3), gtmProducts);
+                                }
+                                catch { }
+                            }
+                            if (_Settings.Value.HasFacebookEcommerce)
+                            {
+                                try
+                                {
+                                    await _JsRuntime.InvokeVoidAsync("AddFacebookEcommerceAddProduct", _MainApp.PageState.FacebokPixelCode, Product.ProductID, Product.Price, _MainApp.PageState.TehnicalCurrency);
+                                }
+                                catch { }
+                            }
+                            await RefreshShoppingCartItems(); // Reset ShoppingCartBox
+                            await LoadRecentlyVisitedProduts();
+                            await LocalStorage.SetItemAsync("ShoppingCartAccessed", _Protector.Protect(DateTime.Now.ToString()));
+                            StateHasChanged(); // Re-render
+                        }
+                    }
+                }
+            }
+        }
+    }
+    /// <summary>
+    /// Reset Filtering And Navigate to new Location. Invoked on Click and from other events.
+    /// </summary>
+    async Task RefreshShoppingCartItems()
+    {
+        SearchModelShoppingCartItems.PageSize = _Settings.Value.FrontShoppingCartBoxPageSize;
+        SearchModelShoppingCartItems.Page = null;
+        SearchModelShoppingCartItems.Sort = DefaultSorting;
+        await LoadShoppingCartItems();
+    }
+
+    #endregion
+
+    #region AddToProductFavorites
+
+    /// <summary>
+    /// Add an item to Shopping Cart for an Anonimous or Authenticated User.
+    /// Invoked from Childs: ProductList, Product Page, etc
+    /// </summary>
+    public async Task AddToProductFavoritesRevert(ProductFavorite item)
+    {
+        if (item != null && item.ProductID > 0)
+        {
+            bool isFound = false;
+            // Get Authenticated user
+            await RefreshUser();
+            if (ApplicationUser != null)
+            {
+                item.ApplicationUserID = ApplicationUser.Id;
+                isFound = true;
+            }
+            if (!isFound) // if is not authenticated get anonimous
+            {
+                var anonimousCookie = _MainApp?.PageState?.AnonimousIdentityCookie;
+                if (!string.IsNullOrEmpty(anonimousCookie))
+                {
+                    item.AnonimousUserID = anonimousCookie;
+                    isFound = true;
+                }
+            }
+            if (isFound) // if there is an user and is not an robot
+            {
+                if (await _ProductFavoriteService.AddProductFavoriteItemRevert(item))
+                {
+                    await LoadProductFavorites(); //Reload
+                    await _MainApp.OnLayoutChangedRefreshSomeDynamicEntities();
+                    StateHasChanged();
+                }
+
+            }
+        }
+    }
+    #endregion
+
+    #region AddToProductComparator
+
+    /// <summary>
+    /// Add an item to Shopping Cart for an Anonimous or Authenticated User.
+    /// Invoked from Childs: ProductList, Product Page, etc
+    /// </summary>
+    public async Task AddToProductComparatorRevert(ProductComparator item)
+    {
+        if (item != null && item.ProductID > 0)
+        {
+            bool isFound = false;
+            // Get Authenticated user
+            await RefreshUser();
+            if (ApplicationUser != null)
+            {
+                item.ApplicationUserID = ApplicationUser.Id;
+                isFound = true;
+            }
+            if (!isFound) // if is not authenticated get anonimous
+            {
+                var anonimousCookie = _MainApp?.PageState?.AnonimousIdentityCookie;
+                if (!string.IsNullOrEmpty(anonimousCookie))
+                {
+                    item.AnonimousUserID = anonimousCookie;
+                    isFound = true;
+                }
+            }
+            if (isFound) // if there is an user and is not an robot
+            {
+                if (await _ProductComparatorService.AddProductComparatorItemRevert(item))
+                {
+                    await LoadProductComparator(); //Reload
+                    await _MainApp.OnLayoutChangedRefreshSomeDynamicEntities();
+                    StateHasChanged();
+                }
+
+            }
+        }
+    }
+    #endregion
+
+    void ClearMemoryCache(bool initializeList)
+    {
+        foreach (var key in CachedKeys ?? new List<string>())
+        {
+            try
+            {
+                _MemoryCache.Remove(key);
+            }
+            catch { }
+        }
+        if (initializeList)
+        {
+            CachedKeys = new List<string>();
+        }
+    }
+    protected virtual async ValueTask Dispose(bool disposing)
+    {
+        if (_Disposed)
+        {
+            return;
+        }
+        if (disposing)
+        {
+            try
+            {
+                if (hubConnection != null)
+                {
+                    await hubConnection.StopAsync();
+                    await hubConnection.DisposeAsync();
+                    hubConnection = null;
+                }
+            }
+            catch { }
+
+            //GC.Collect();//GC.WaitForPendingFinalizers();
+            //GC.WaitForPendingFinalizers();
+        }
+
+        _Disposed = true;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await Dispose(true);
+        // GC.SuppressFinalize(this);
+    }
+
+}
