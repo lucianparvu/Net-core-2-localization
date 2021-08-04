@@ -1,0 +1,1136 @@
+@inject DepartmentService _Service
+@inject OrderService _OrderService
+@inject FeedbackQuestionService _FeedbackQuestionService
+@inject ShoppingCartService _ShoppingCartService
+@inject GiftCardValueService _GiftCardValueService
+@inject GiftCardTemplateService _GiftCardTemplateService
+@inject ApplicationUserService _ApplicationUserService
+@inject ProductService _ProductService
+@inject HostPageService _HostPageService
+@inject ZoneService _ZoneService
+@inject EmailTemplateService _EmailTemplateService
+@inject IEmailSender _EmailSender
+@inject WebsiteDBSettingService _WebsiteDBSettingService
+@inject ReCaptchaService _ReCaptchaService
+@inject IJSRuntime _JsRuntime
+@inject NavigationManager _NavigationManager
+@inject IStringLocalizer<SharedResource> _SharedResource
+@inject IStringLocalizer<SharedResourceDataAnnotations> _SharedResourceDataAnnotations
+@inject IOptions<WebSiteSettings> _Settings
+@inject IMemoryCache _MemoryCache
+@implements IDynamicEntityChangeableLayout
+@implements IDisposable
+@*<CssLoader Src="/css/frontdepartment/indexfrontdepartment" Id="IndexFrontPage" />*@
+@if (Department?.DepartmentType?.DepartmentTypeAction == DepartmentTypeAction.IsGallery)
+{
+    <CssLoader Src="/js/justifiedGallery/justifiedGallery.min.css" Id="chartjsblazorCSSGallery" />
+    @*<CssLoader Src="/js/slick-1.8.1/slick/slick.min.css" Id="slickcss" />
+        <CssLoader Src="/js/slick-1.8.1/slick/slick-theme.min.css" Id="slicktheme" />*@
+    <CssLoader Src="/js/lightbox2-master/dist/css/lightbox.min.css" Id="lightboxcss" />
+    <ScriptLoader Src="/js/justifiedGallery/jquery.justifiedGallery.min.js" IsFooter="true" IsDisposable="true" OnChildLoaded="@(() => IsScriptGalleryLoaded = true)" />
+    <ScriptLoader Src="/js/lightbox2-master/dist/js/lightbox.min.js" IsFooter="true" IsDisposable="false" OnChildLoaded="@(() => IsScriptLightBoxLoaded = true)" />
+}
+@if (CanLoadExternalComponents)
+{
+    <AuthorizeView>
+        <Authorized>
+            @if (@context.User.IsInRole("Administrator") || @context.User.IsInRole("SubAdministrator"))
+            {
+                <NavLink class=" btn-sm btn-secondary  BtnAdminEdit" target="_blank" href="@($"{AdminHostPage?.HostPath}?DepartmentID={Department?.DepartmentID}")">   @_SharedResource["Edit"]</NavLink>
+            }
+        </Authorized>
+    </AuthorizeView>
+}
+@if (Department != null && Department?.DepartmentType?.DepartmentTypeAction != DepartmentTypeAction.IsHome)
+{
+    <ol class="breadcrumb">
+        @foreach (var item in Department?.Parents ?? new List<Department>())
+        {
+            <li class="breadcrumb-item active"><NavLink href="@item.HostPath"> @item.Title </NavLink></li>
+        }
+        <li class="breadcrumb-item"> @Department?.Title</li>
+    </ol>
+}
+@if (SitePathFiles?.Count() > 0)
+{
+    @foreach (var item in SitePathFiles ?? new List<DepartmentFile>())
+    {
+        <div class="sitePathPic">
+            <img src="@item.UrlNice" alt="@item.Title" class="lazyload" />
+        </div>
+    }
+}
+@if (_Settings.Value.HasProductQuickSearch && Department?.DepartmentType?.DepartmentTypeAction == DepartmentTypeAction.IsHome)
+{
+ 
+    <ProductQuickSearch OnChildChangedShouldRefresh="@(()=>RefreshProductQuickSearch=false)" ShouldRefresh="RefreshProductQuickSearch"></ProductQuickSearch>
+ 
+}
+
+@((MarkupString)(IsPreview.HasValue ? Department?.TempDescription : Department?.Description))
+
+@if (Department?.DepartmentType?.DepartmentTypeAction == DepartmentTypeAction.IsHome & CanLoadExternalComponents)
+{
+    if (_Settings.Value.HasLatestProductsOnHomePage)
+    {
+        <PL.Views.FrontProduct.LatestProductsOnHomePage PageState="PageState" OnChildIframeExternalChangedShouldRefresh="@(()=>RefreshLatestProductsOnHomePage=false)" ShouldRefreshIframeExternal="RefreshLatestProductsOnHomePage"></PL.Views.FrontProduct.LatestProductsOnHomePage>
+    }
+    if (_Settings.Value.HasProductsOnHomePage)
+    {
+            <div>
+                <PL.Views.FrontProduct.ProductsOnHomePage PageState="PageState" OnChildIframeExternalChangedShouldRefresh="@(()=>RefreshProductsOnHomePage=false)" ShouldRefreshIframeExternal="RefreshProductsOnHomePage"></PL.Views.FrontProduct.ProductsOnHomePage>
+            </div>
+     }
+    if (PageState != null && _Settings.Value.HasLatestArticlesOnHomePage)
+    {
+        <div >
+        <PL.Views.FrontArticle.LatestArticlesOnHomePage PageState="PageState" OnChildIframeExternalChangedShouldRefresh="@(()=>RefreshLatestArticlesOnHomePage=false)" ShouldRefreshIframeExternal="RefreshLatestArticlesOnHomePage"></PL.Views.FrontArticle.LatestArticlesOnHomePage>
+       </div>
+    }
+    if (PageState != null && _Settings.Value.HasGuestbook)
+    {
+        <div class="LatestGuestbook">
+            <LatestGuestbookComments PageState="PageState" OnChildIframeExternalChangedShouldRefresh="@(()=>RefreshLatestGuestbookComments=false)" ShouldRefreshIframeExternal="RefreshLatestGuestbookComments"></LatestGuestbookComments>
+        </div>
+    }
+
+    @((MarkupString)Zones?.Where(p => p.ZoneType?.ZoneTypeAction == ZoneTypeAction.IsGeneral)?.FirstOrDefault()?.Description)
+
+
+    if (PageState != null && _Settings.Value.HasNewsletter)
+    {
+         <div>
+        <PL.Views.FrontNewsletterSubscribe.FrontNewsletterSubscribeForm PageState="PageState"></PL.Views.FrontNewsletterSubscribe.FrontNewsletterSubscribeForm>
+         </div>
+    }
+}
+
+@if (Department?.DepartmentType?.DepartmentTypeAction == DepartmentTypeAction.IsGuestbook)
+{
+    if (PageState != null && _Settings.Value.HasGuestbook)
+    {
+        <GuestBookFrontDepartment PageState="PageState" OnChildIframeExternalChangedShouldRefresh="@(()=>RefreshGuestbookComments=false)" ShouldRefreshIframeExternal="RefreshGuestbookComments"></GuestBookFrontDepartment>
+    }
+}
+@if (Department?.DepartmentType?.DepartmentTypeAction == DepartmentTypeAction.IsContact)
+{
+    <EditForm EditContext="@(_EditContextContactFormModel ?? new EditContext(new ContactFormModel()))" OnValidSubmit="HandleValidSubmitContactForm" OnInvalidSubmit="@(() => IsFormInvalid = true)" class="form-horizontal">
+        <div class="row justify-content-md-center">
+            <div class="col-md-6 align-self-center card">
+                <h1 class="h3 mb-3 font-weight-normal">@_SharedResource["Contact"]</h1>
+                <CustomValidator UseSharedResource="true" @ref="CustomValidatorContactFormModel" />
+                <div class="form-group">
+                    <label for="Surname">@_SharedResourceDataAnnotations["Name"]</label>
+                    <InputText @bind-Value="ContactFormModel.Name" name="Name" class="form-control" placeholder="@_SharedResourceDataAnnotations["Name"]" />
+                    <span class="text-danger"> <ValidationMessage For="@(() => ContactFormModel.Name)" /></span>
+                </div>
+                <div class="form-group">
+                    <label for="Email">@_SharedResourceDataAnnotations["Email"]</label>
+                    <InputText @bind-Value="ContactFormModel.Email" name="Email" class="form-control" placeholder="@_SharedResourceDataAnnotations["Email"]" />
+                    <span class="text-danger"> <ValidationMessage For="@(() => ContactFormModel.Email)" /></span>
+                </div>
+                <div class="form-group">
+                    <label for="PhoneNumber">@_SharedResourceDataAnnotations["PhoneNumber"]</label>
+                    <InputText @bind-Value="ContactFormModel.PhoneNumber" name="PhoneNumber" class="form-control" placeholder="@_SharedResourceDataAnnotations["PhoneNumber"]" />
+                    <span class="text-danger"> <ValidationMessage For="@(() => ContactFormModel.PhoneNumber)" /></span>
+                </div>
+                <div class="form-group">
+                    <label for="SurLocality">@_SharedResourceDataAnnotations["Locality"]</label>
+                    <InputText @bind-Value="ContactFormModel.Locality" Locality="Locality" class="form-control" placeholder="@_SharedResourceDataAnnotations["Locality"]" />
+                    <span class="text-danger"> <ValidationMessage For="@(() => ContactFormModel.Locality)" /></span>
+                </div>
+                <div class="form-group">
+                    <label for="SurCompany">@_SharedResourceDataAnnotations["Company"]</label>
+                    <InputText @bind-Value="ContactFormModel.Company" Company="Company" class="form-control" placeholder="@_SharedResourceDataAnnotations["Company"]" />
+                    <span class="text-danger"> <ValidationMessage For="@(() => ContactFormModel.Company)" /></span>
+                </div>
+                <div class="form-group">
+                    <label for="SurMessage">@_SharedResourceDataAnnotations["Message"]</label>
+                    <InputTextArea @bind-Value="ContactFormModel.Message" Message="Message" class="form-control" placeholder="@_SharedResourceDataAnnotations["Message"]" />
+                    <span class="text-danger"> <ValidationMessage For="@(() => ContactFormModel.Message)" /></span>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">@_SharedResource["Send"]</button>
+                </div>
+            </div>
+        </div>
+    </EditForm>
+}
+@if (Department?.DepartmentType?.DepartmentTypeAction == DepartmentTypeAction.IsRequestOffer)
+{
+    <EditForm EditContext="@(_EditContextRequestOfferFormModel ?? new EditContext(new RequestOfferFormModel()))" OnValidSubmit="HandleValidSubmitRequestOfferForm" OnInvalidSubmit="@(() => IsFormInvalid = true)" class="form-horizontal">
+        <h1 class="h3 mb-3 font-weight-normal">@_SharedResource["Request Offer"]</h1>
+        <CustomValidator UseSharedResource="true" />
+        <div class="form-group">
+            <label for="Surname">@_SharedResourceDataAnnotations["Name"]</label>
+            <InputText @bind-Value="RequestOfferFormModel.Name" name="Name" class="form-control" placeholder="@_SharedResourceDataAnnotations["Name"]" />
+            <span class="text-danger"> <ValidationMessage For="@(() => RequestOfferFormModel.Name)" /></span>
+        </div>
+        <div class="form-group">
+            <label for="Email">@_SharedResourceDataAnnotations["Email"]</label>
+            <InputText @bind-Value="RequestOfferFormModel.Email" name="Email" class="form-control" placeholder="@_SharedResourceDataAnnotations["Email"]" />
+            <span class="text-danger"> <ValidationMessage For="@(() => RequestOfferFormModel.Email)" /></span>
+        </div>
+        <div class="form-group">
+            <label for="PhoneNumber">@_SharedResourceDataAnnotations["PhoneNumber"]</label>
+            <InputText @bind-Value="RequestOfferFormModel.PhoneNumber" name="PhoneNumber" class="form-control" placeholder="@_SharedResourceDataAnnotations["PhoneNumber"]" />
+            <span class="text-danger"> <ValidationMessage For="@(() => RequestOfferFormModel.PhoneNumber)" /></span>
+        </div>
+        <div class="form-group">
+            <label for="SurLocality">@_SharedResourceDataAnnotations["Locality"]</label>
+            <InputText @bind-Value="RequestOfferFormModel.Locality" Locality="Locality" class="form-control" placeholder="@_SharedResourceDataAnnotations["Locality"]" />
+            <span class="text-danger"> <ValidationMessage For="@(() => RequestOfferFormModel.Locality)" /></span>
+        </div>
+        <div class="form-group">
+            <label for="SurCompany">@_SharedResourceDataAnnotations["Company"]</label>
+            <InputText @bind-Value="RequestOfferFormModel.Company" Company="Company" class="form-control" placeholder="@_SharedResourceDataAnnotations["Company"]" />
+            <span class="text-danger"> <ValidationMessage For="@(() => RequestOfferFormModel.Company)" /></span>
+        </div>
+        <div class="form-group">
+            <label for="SurMessage">@_SharedResourceDataAnnotations["Message"]</label>
+            <InputTextArea @bind-Value="RequestOfferFormModel.Message" Message="Message" class="form-control" placeholder="@_SharedResourceDataAnnotations["Message"]" />
+            <span class="text-danger"> <ValidationMessage For="@(() => RequestOfferFormModel.Message)" /></span>
+        </div>
+        <div class="form-group">
+            <button type="submit" class="btn btn-primary">@_SharedResource["Send"]</button>
+        </div>
+    </EditForm>
+}
+@if (Department?.DepartmentType?.DepartmentTypeAction == DepartmentTypeAction.IsProductRequestOffer)
+{
+    <div class="row">
+        @if (Product != null)
+        {
+            <div class=" col-md-6">
+                <NavLink href="@Product?.HostPath">
+                    <img src="@Product.CurrentImage" alt="@Product.Title" style="width:80%" class="lazyload" loading="lazy" />
+                </NavLink>
+                <br /> <br />
+                <NavLink href="@Product?.HostPath" style="font-weight:600;">
+                    @Product.Title
+                </NavLink>
+            </div>
+        }
+        <div class="  col-md-6">
+            <EditForm EditContext="@(_EditContextProductRequestOfferFormModel ?? new EditContext(new ProductRequestOfferFormModel()))" OnValidSubmit="HandleValidSubmitProductRequestOfferForm" OnInvalidSubmit="@(() => IsFormInvalid = true)" class="form-horizontal">
+                <h1 class="h3 mb-3 font-weight-normal">@_SharedResource["Product Request Offer"]</h1>
+                <CustomValidator UseSharedResource="true" />
+                <div class="form-group">
+                    <label for="Surname">@_SharedResourceDataAnnotations["Name"]</label>
+                    <InputText @bind-Value="ProductRequestOfferFormModel.Name" name="Name" class="form-control" placeholder="@_SharedResourceDataAnnotations["Name"]" />
+                    <span class="text-danger"> <ValidationMessage For="@(() => ProductRequestOfferFormModel.Name)" /></span>
+                </div>
+                <div class="form-group">
+                    <label for="Email">@_SharedResourceDataAnnotations["Email"]</label>
+                    <InputText @bind-Value="ProductRequestOfferFormModel.Email" name="Email" class="form-control" placeholder="@_SharedResourceDataAnnotations["Email"]" />
+                    <span class="text-danger"> <ValidationMessage For="@(() => ProductRequestOfferFormModel.Email)" /></span>
+                </div>
+                <div class="form-group">
+                    <label for="PhoneNumber">@_SharedResourceDataAnnotations["PhoneNumber"]</label>
+                    <InputText @bind-Value="ProductRequestOfferFormModel.PhoneNumber" name="PhoneNumber" class="form-control" placeholder="@_SharedResourceDataAnnotations["PhoneNumber"]" />
+                    <span class="text-danger"> <ValidationMessage For="@(() => ProductRequestOfferFormModel.PhoneNumber)" /></span>
+                </div>
+                <div class="form-group">
+                    <label for="SurLocality">@_SharedResourceDataAnnotations["Locality"]</label>
+                    <InputText @bind-Value="ProductRequestOfferFormModel.Locality" Locality="Locality" class="form-control" placeholder="@_SharedResourceDataAnnotations["Locality"]" />
+                    <span class="text-danger"> <ValidationMessage For="@(() => ProductRequestOfferFormModel.Locality)" /></span>
+                </div>
+                <div class="form-group">
+                    <label for="SurCompany">@_SharedResourceDataAnnotations["Company"]</label>
+                    <InputText @bind-Value="ProductRequestOfferFormModel.Company" Company="Company" class="form-control" placeholder="@_SharedResourceDataAnnotations["Company"]" />
+                    <span class="text-danger"> <ValidationMessage For="@(() => ProductRequestOfferFormModel.Company)" /></span>
+                </div>
+                <div class="form-group">
+                    <label for="SurMessage">@_SharedResourceDataAnnotations["Message"]</label>
+                    <InputTextArea @bind-Value="ProductRequestOfferFormModel.Message" Message="Message" class="form-control" placeholder="@_SharedResourceDataAnnotations["Message"]" />
+                    <span class="text-danger"> <ValidationMessage For="@(() => ProductRequestOfferFormModel.Message)" /></span>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">@_SharedResource["Send"]</button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+@if (Department?.DepartmentType?.DepartmentTypeAction == DepartmentTypeAction.IsGiftCardRequestOffer || Department?.DepartmentType?.DepartmentTypeAction == DepartmentTypeAction.IsGiftCardRequestOrder)
+{
+    @*@if (Product != null)
+        {
+            <NavLink href="@Product?.HostPath" style="font-weight:600;">
+                <img src="@Product.CurrentImage" alt="@Product.Title" class="lazyload" loading="lazy" />
+            </NavLink>
+            <br />
+            <NavLink href="@Product?.HostPath" style="font-weight:600;">
+                @Product.Title
+            </NavLink>
+        }*@
+    <EditForm EditContext="@(_EditContextGiftCardFormModel ?? new EditContext(new GiftCardFormModel()))" OnValidSubmit="HandleValidSubmitGiftCardForm" OnInvalidSubmit="@(() => IsFormInvalid = true)" class="form-horizontal">
+        @*<h1 class="h3 mb-3 font-weight-normal">@_SharedResource["Gift Card"]</h1>*@
+        <CustomValidator UseSharedResource="true" />
+        <div class="row justify-content-md-center">
+            <div class="col-md-6">
+                <div class="card">
+                    @if (_Settings.Value.HasShoppingCart && _Settings.Value.HasGiftCardRequestOrder)
+                    {
+                    }
+                    else
+                    {
+                        <div class="form-group">
+                            <label for="Surname">@_SharedResourceDataAnnotations["Name"]</label>
+                            <InputText @bind-Value="GiftCardFormModel.Name" name="Name" class="form-control" placeholder="@_SharedResourceDataAnnotations["Name"]" />
+                            <span class="text-danger"> <ValidationMessage For="@(() => GiftCardFormModel.Name)" /></span>
+                        </div>
+                        <div class="form-group">
+                            <label for="Email">@_SharedResourceDataAnnotations["Email"]</label>
+                            <InputText @bind-Value="GiftCardFormModel.Email" name="Email" class="form-control" placeholder="@_SharedResourceDataAnnotations["Email"]" />
+                            <span class="text-danger"> <ValidationMessage For="@(() => GiftCardFormModel.Email)" /></span>
+                        </div>
+                        <div class="form-group">
+                            <label for="Phone">@_SharedResourceDataAnnotations["Phone"]</label>
+                            <InputText @bind-Value="GiftCardFormModel.Phone" name="Phone" class="form-control" placeholder="@_SharedResourceDataAnnotations["Phone"]" />
+                            <span class="text-danger"> <ValidationMessage For="@(() => GiftCardFormModel.Phone)" /></span>
+                        </div>
+                        <div class="form-group">
+                            <label for="Message">@_SharedResourceDataAnnotations["Message"]</label>
+                            <InputText @bind-Value="GiftCardFormModel.Message" name="Email" class="form-control" placeholder="@_SharedResourceDataAnnotations["Message"]" />
+                            <span class="text-danger"> <ValidationMessage For="@(() => GiftCardFormModel.Message)" /></span>
+                        </div>
+                    }
+                    <div class="form-group">
+                        <label for="PhoneNumber">@_SharedResourceDataAnnotations["GiftCardValue"]</label>
+                        <InputSelectNumber name="Name" class="form-control" @bind-Value="GiftCardFormModel.GiftCardValueID">
+                            <option value="0">@_SharedResource["Select"]</option>
+                            @foreach (var item in GiftCardValues ?? new List<GiftCardValue>())
+                                {
+                                <option value="@item.GiftCardValueID">@item.Title</option>
+                                }
+                        </InputSelectNumber>
+                        <span class="text-danger"> <ValidationMessage For="@(() => GiftCardFormModel.GiftCardValueID)" /></span>
+                    </div>
+                    <div class="form-group">
+                        <label for="PhoneNumber">@_SharedResourceDataAnnotations["GiftCardTemplate"]</label>
+                        <InputSelectNumber name="Name" class="form-control" @bind-Value="GiftCardFormModel.GiftCardTemplateID">
+                            <option value="0">@_SharedResource["Select"]</option>
+                            @foreach (var item in GiftCardTemplates ?? new List<GiftCardTemplate>())
+                                {
+                                <option value="@item.GiftCardTemplateID">@item.Title</option>
+                                }
+                        </InputSelectNumber>
+                        <span class="text-danger"> <ValidationMessage For="@(() => GiftCardFormModel.GiftCardTemplateID)" /></span>
+                        @if (GiftCardTemplates?.Any(p => p.GiftCardTemplateID == GiftCardFormModel.GiftCardTemplateID) == true)
+                        {
+                            <br />
+                            <img loading="lazy" style="width:100%" src="@GiftCardTemplates.FirstOrDefault(p=>p.GiftCardTemplateID == GiftCardFormModel.GiftCardTemplateID).CurrentImage" class="lazyload" />
+                        }
+                    </div>
+
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-primary">
+                            @if (_Settings.Value.HasShoppingCart && _Settings.Value.HasGiftCardRequestOrder)
+                            {
+                                @_SharedResource["Add to cart"]
+                            }
+                            else
+                            {
+                                @_SharedResource["Send"]
+                            }
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </EditForm>
+}
+@if (Department?.DepartmentType?.DepartmentTypeAction == DepartmentTypeAction.IsFeedBack)
+{
+    <EditForm EditContext="@(_EditContextFeedbackFormModel ?? new EditContext(new FeedbackFormModel()))" OnValidSubmit="HandleValidSubmitFeedbackFormModel" OnInvalidSubmit="@(() => IsFormInvalid = true)" class="form-horizontal">
+        <h1 class="h3 mb-3 font-weight-normal">@_SharedResource["Feedback"]</h1>
+        <CustomValidator UseSharedResource="true" />
+        @if (string.IsNullOrEmpty(OrderGUID))
+        {
+            <div class="form-group">
+                <label for="Surname">@_SharedResourceDataAnnotations["Surname"]</label>
+                <InputText @bind-Value="FeedbackFormModel.Name" name="Name" class="form-control" placeholder="@_SharedResourceDataAnnotations["Surname"]" />
+                <span class="text-danger"> <ValidationMessage For="@(() => FeedbackFormModel.Name)" /></span>
+            </div>
+            <div class="form-group">
+                <label for="Email">@_SharedResourceDataAnnotations["Email"]</label>
+                <InputText @bind-Value="FeedbackFormModel.Email" name="Email" class="form-control" placeholder="@_SharedResourceDataAnnotations["Email"]" />
+                <span class="text-danger"> <ValidationMessage For="@(() => FeedbackFormModel.Email)" /></span>
+            </div>
+            <div class="form-group">
+                <label for="Phone">@_SharedResourceDataAnnotations["PhoneNumber"]</label>
+                <InputText @bind-Value="FeedbackFormModel.Phone" name="Phone" class="form-control" placeholder="@_SharedResourceDataAnnotations["PhoneNumber"]" />
+                <span class="text-danger"> <ValidationMessage For="@(() => FeedbackFormModel.Phone)" /></span>
+            </div>
+        }
+        @foreach (var item in FeedbackQuestions ?? new List<FeedbackQuestion>())
+        {
+            <div class="form-group">
+                <b> @item.Question </b><br />
+                @if (item.FeedbackAnswerType.FeedbackAnswerTypeAction == FeedbackAnswerTypeAction.IsSingleLine)
+                {
+                    <InputText @bind-Value="item.Title" class="form-control" />
+                }
+                else if (item.FeedbackAnswerType.FeedbackAnswerTypeAction == FeedbackAnswerTypeAction.IsTextArea)
+                {
+                    <InputTextArea @bind-Value="item.Title" class="form-control" />
+                }
+                else if (item.FeedbackAnswerType.FeedbackAnswerTypeAction == FeedbackAnswerTypeAction.IsRadio)
+                {
+                    @foreach (var answer in item.FeedbackAnswers ?? new List<FeedbackAnswer>())
+                    {
+                        <label>
+                            <input type="radio" checked="@(item.SelectedAnswerID == answer.FeedbackAnswerID)" @onchange="(()=>item.SelectedAnswerID=answer.FeedbackAnswerID)" />@answer.Answer
+                        </label>
+                        <br />
+                    }
+                }
+                else if (item.FeedbackAnswerType.FeedbackAnswerTypeAction == FeedbackAnswerTypeAction.IsCheckbox)
+                {
+                    @foreach (var answer in item.FeedbackAnswers ?? new List<FeedbackAnswer>())
+                    {
+                        <label>
+                            <input type="checkbox" checked="@(answer.IsSelected)" @onchange="(()=>answer.IsSelected=!answer.IsSelected)" />@answer.Answer
+                        </label>
+                        <br />
+                    }
+                }
+            </div>
+        }
+
+        <div class="form-group">
+            <label for="Message">@_SharedResourceDataAnnotations["Message"]</label>
+            <InputTextArea @bind-Value="FeedbackFormModel.Message" name="Email" class="form-control" placeholder="@_SharedResourceDataAnnotations["Message"]" />
+            <span class="text-danger"> <ValidationMessage For="@(() => FeedbackFormModel.Message)" /></span>
+        </div>
+
+        <div class="form-group">
+            <button type="submit" class="btn btn-primary"> @_SharedResource["Send"]</button>
+        </div>
+    </EditForm>
+}
+
+@if (Department?.DepartmentType?.DepartmentTypeAction == DepartmentTypeAction.IsGallery && GalleryFiles?.Count() > 0)
+{
+    <style type="text/css">
+        .GalleryPage img {
+            max-width: 100%;
+        }
+    </style>
+    <div class="GalleryPage" style="display: flex; overflow: hidden;">
+        @foreach (var item in GalleryFiles ?? new List<DepartmentFile>())
+        {
+            <a href="@item.UrlNice" data-title="@item.Title" data-lightbox="roadtrip">
+                <img src="@item.UrlNice" alt="@item.Title" class="lazyload" loading="lazy" />
+
+                @*<div class="jg-caption">
+                        @((MarkupString)(@item.Description))
+                    </div>*@
+            </a>
+        }
+    </div>
+}
+
+@code {
+
+    #region Params
+    [CascadingParameter] public App _MainApp { get; set; }
+    [Parameter] public PageStateModel PageState { get; set; }
+    [CascadingParameter] private Task<AuthenticationState> _AuthenticationStateTask { get; set; }
+    AuthenticationState Authentication;
+    Department Department;
+    Product Product;
+    HostPage AdminHostPage;
+    EditContext _EditContextContactFormModel; EditContext _EditContextRequestOfferFormModel; EditContext _EditContextProductRequestOfferFormModel;
+    ContactFormModel ContactFormModel;
+    RequestOfferFormModel RequestOfferFormModel;
+    ProductRequestOfferFormModel ProductRequestOfferFormModel;
+    EditContext _EditContextGiftCardFormModel;
+    GiftCardFormModel GiftCardFormModel;
+    EditContext _EditContextFeedbackFormModel;
+    FeedbackFormModel FeedbackFormModel;
+    // string ReCaptchaTokenContactForm; string ReCaptchaTokenRequestOfferForm; string ReCaptchaTokenProductRequestOfferForm; string ReCaptchaTokenGiftCardForm; string ReCaptchaTokenFeedbackForm;
+    bool IsSetMetaSEO = false;
+    bool? IsPreview;
+    bool IsSetReCaptchaScript = false; bool IsSetReCaptchaScriptRequestOffer = false; bool IsSetReCaptchaScriptProductRequestOffer = false; bool IsSetReCaptchaScriptGiftCardForm = false; bool IsSetReCaptchaScriptFeedbackForm = false;
+    List<Zone> Zones { get; set; }
+    List<ZoneTypeAction> ZoneTypeActions;
+    bool IsSetShoppingCartPopupRemember; bool CanLoadExternalComponents;
+    List<GiftCardValue> GiftCardValues;
+    List<GiftCardTemplate> GiftCardTemplates;
+    List<FeedbackQuestion> FeedbackQuestions;
+    List<DepartmentFile> GalleryFiles;
+    List<DepartmentFile> SitePathFiles;
+    string OrderGUID;
+    Order Order;
+    bool IsScriptGalleryPage;
+    bool IsScriptGalleryLoaded; bool IsScriptLightBoxLoaded;
+    bool RefreshLatestGuestbookComments; bool RefreshGuestbookComments; bool RefreshLatestProductsOnHomePage; bool RefreshProductsOnHomePage; bool RefreshLatestArticlesOnHomePage; bool RefreshProductQuickSearch;
+    bool IsRendered;
+    CustomValidator CustomValidatorContactFormModel;
+    bool IsFormInvalid;
+    bool _Disposed = false;
+    List<string> CachedKeys;
+    bool IsClearMemoryCache;
+    string thisname;
+
+    void InitializeObjects()
+    {
+        CachedKeys = new List<string>();
+        ContactFormModel = new ContactFormModel();
+        RequestOfferFormModel = new RequestOfferFormModel();
+        ProductRequestOfferFormModel = new ProductRequestOfferFormModel();
+        GiftCardFormModel = new GiftCardFormModel();
+        FeedbackFormModel = new FeedbackFormModel();
+        ZoneTypeActions = new List<ZoneTypeAction>() { ZoneTypeAction.IsGeneral };
+        try { thisname = this.GetType().Name; } catch { }
+    }
+    #endregion
+
+    #region InitAndRender
+
+    protected override async Task OnInitializedAsync()
+    {
+        InitializeObjects();
+
+        if (PageState != null)
+        {
+            _MainApp.SubscribeDynamicEntity(this);
+            await Refresh();
+            StateHasChanged();
+            CanLoadExternalComponents = true;
+            AdminHostPage = await _HostPageService.GetHostPageByActionTypeAndByAdminDefaultCulture(HostPageActionType.IsDepartmentAddEditPage);
+            RefreshLatestGuestbookComments = RefreshGuestbookComments = RefreshLatestProductsOnHomePage = RefreshProductsOnHomePage = RefreshLatestArticlesOnHomePage = RefreshProductQuickSearch = true;
+            IsRendered = true;
+        }
+        IsClearMemoryCache = IsRendered = true;
+    }
+    /// <summary>
+    /// Invoked all time after page has changed By the Main App triggered from Convention Router.
+    /// </summary>
+    public async Task OnRouterLocationChangedRefresh()
+    {
+        await Refresh();
+        IsSetMetaSEO = false;
+        IsSetReCaptchaScript = IsSetReCaptchaScriptRequestOffer = IsSetReCaptchaScriptProductRequestOffer = IsSetReCaptchaScriptGiftCardForm = IsSetReCaptchaScriptFeedbackForm = false;
+        RefreshLatestGuestbookComments = RefreshGuestbookComments = RefreshLatestProductsOnHomePage = RefreshProductsOnHomePage = RefreshLatestArticlesOnHomePage = RefreshProductQuickSearch = true;
+        StateHasChanged();
+    }
+    /// <summary>
+    /// Invoked all time after page has changed By the Main App triggered from Convention Router.
+    /// </summary>
+    public Task OnLayoutChangedRefreshSomeDynamicEntities()
+    {
+        RefreshLatestProductsOnHomePage = RefreshProductsOnHomePage = true;
+        return Task.CompletedTask;
+    }
+    /// <summary>
+    /// Refresh first time and after Navigation has Changed
+    /// </summary>
+    async Task Refresh()
+    {
+        IsPreview = _NavigationManager.ToAbsoluteUri(_NavigationManager.Uri).GetBoolValueOrNullFromUri("Preview");
+        if (PageState != null)
+        {
+            if (!PageState.IsBlazorConnected && !IsRendered && !string.IsNullOrEmpty(thisname) && !string.IsNullOrEmpty(PageState.CacheKeyGuid))
+            {
+                var key = $"{PageState.CacheKeyGuid}{nameof(_Service.GetDepartmentWithParentsByID)}{thisname}";
+                if (!CachedKeys.Any(p => p == key)) { CachedKeys.Add(key); }
+                Department = await _MemoryCache.GetOrCreateAsync(key, async entry =>
+                {
+                    entry.SetOptions(new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(4) }.AddExpirationToken(new CancellationChangeToken(new CancellationTokenSource(TimeSpan.FromSeconds(4)).Token)));
+                    return await _Service.GetDepartmentWithParentsByID(PageState.PageStateID);
+                });
+            }
+            else
+            {
+                Department = await _Service.GetDepartmentWithParentsByID(PageState.PageStateID);
+            }
+            await LoadZones();
+            if (Department?.DepartmentType?.DepartmentTypeAction == DepartmentTypeAction.IsHome && _Settings.Value.HasBanners)
+            {
+                await _MainApp.LoadBannersOnHomePage();
+            }
+            // Initialise Contexts
+            if (Department?.DepartmentType?.DepartmentTypeAction == DepartmentTypeAction.IsContact)
+            {
+                //throw new System.ArgumentException("Parameter cannot be null", "original");
+                ContactFormModel = new ContactFormModel();
+                _EditContextContactFormModel = new EditContext(ContactFormModel);
+            }
+            if (Department?.DepartmentType?.DepartmentTypeAction == DepartmentTypeAction.IsRequestOffer)
+            {
+                RequestOfferFormModel = new RequestOfferFormModel();
+                _EditContextRequestOfferFormModel = new EditContext(RequestOfferFormModel);
+            }
+            if (Department?.DepartmentType?.DepartmentTypeAction == DepartmentTypeAction.IsProductRequestOffer)
+            {
+                var productID = _NavigationManager.ToAbsoluteUri(_NavigationManager.Uri).GetIntValueOrNullFromUri("ProductID");
+                if (productID.HasValue && productID.Value > 0)
+                {
+                    Product = await _ProductService.GetProductWithDetailsForRequestOffer(productID.Value);
+                }
+                ProductRequestOfferFormModel = new ProductRequestOfferFormModel();
+                _EditContextProductRequestOfferFormModel = new EditContext(ProductRequestOfferFormModel);
+            }
+            if (Department?.DepartmentType?.DepartmentTypeAction == DepartmentTypeAction.IsGiftCardRequestOffer || Department?.DepartmentType?.DepartmentTypeAction == DepartmentTypeAction.IsGiftCardRequestOrder)
+            {
+                GiftCardValues = await _GiftCardValueService.GetGiftCardValues(new SearchModel() { CultureID = PageState.CultureID, IsPublished = true });
+                GiftCardTemplates = await _GiftCardTemplateService.GetGiftCardTemplates(new SearchModel() { CultureID = PageState.CultureID, IsPublished = true });
+                GiftCardFormModel = new GiftCardFormModel();
+                if (_Settings.Value.HasShoppingCart && _Settings.Value.HasGiftCardRequestOrder)
+                {
+                    GiftCardFormModel.Name = "-";
+                    GiftCardFormModel.Email = "test@softimpera.ro";
+                    GiftCardFormModel.Phone = "-";
+                    GiftCardFormModel.Message = "-";
+                }
+                _EditContextGiftCardFormModel = new EditContext(GiftCardFormModel);
+            }
+            if (Department?.DepartmentType?.DepartmentTypeAction == DepartmentTypeAction.IsFeedBack)
+            {
+                OrderGUID = _NavigationManager.ToAbsoluteUri(_NavigationManager.Uri).GetStringValueOrEmptyFromUri(nameof(OrderGUID).ToString());
+                FeedbackQuestions = await _FeedbackQuestionService.GetFeedbackQuestions(new SearchModel() { IsPublished = true, CultureID = PageState.CultureID });
+                FeedbackFormModel = new FeedbackFormModel();
+                if (!string.IsNullOrEmpty(OrderGUID))
+                {
+                    Order = await _OrderService.GetOrderByGUID(OrderGUID);
+                    if (Order != null)
+                    {
+                        FeedbackFormModel.Name = Order.DeliveryAdress.FullName;
+                        FeedbackFormModel.Email = Order.DeliveryAdress.EmailAdress;
+                        FeedbackFormModel.Phone = Order.DeliveryAdress.Phone;
+                    }
+                }
+                _EditContextFeedbackFormModel = new EditContext(FeedbackFormModel);
+            }
+            if (Department?.DepartmentType?.DepartmentTypeAction == DepartmentTypeAction.IsGallery)
+            {
+                GalleryFiles = await _Service.GetDepartmentFiles(new SearchModel() { LoadGalleryFiles = true, DepartmentID = Department.DepartmentID, IsPublished = true });
+                IsScriptGalleryPage = false;
+            }
+            if (Department != null)
+            {
+                SitePathFiles = await _Service.GetDepartmentFiles(new SearchModel() { LoadSitePathFiles = true, DepartmentID = Department.DepartmentID, IsPublished = true });
+            }
+            IsSetShoppingCartPopupRemember = false;
+        }
+    }
+    /// <summary>
+    /// Invoke Javascript Functions only After Render: SEO, Captcha,etc
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+        }
+        if (IsClearMemoryCache)
+        {
+            IsClearMemoryCache = false;
+            ClearMemoryCache(true);
+        }
+        if (IsFormInvalid)
+        {
+            IsFormInvalid = false;
+            try
+            {
+                await _JsRuntime.InvokeVoidAsync("FocusToInvalidElement", TimeSpan.FromSeconds(3));
+            }
+            catch { }
+        }
+
+        if (!IsSetMetaSEO && PageState != null && CanLoadExternalComponents && Department !=null)
+        {
+            IsSetMetaSEO = true;
+            try
+            {
+                await _JsRuntime.InvokeVoidAsync("SetSEOElements", TimeSpan.FromSeconds(3), PageState?.MetaTitle, PageState?.MetaDescription, PageState.IsRobotsNoIndex, PageState.CanonicalUrl);
+                await _JsRuntime.InvokeVoidAsync("SetAnaliticsScript", TimeSpan.FromSeconds(3), PageState?.MetaTitle, PageState?.GoogleEcommerceCode, PageState?.HostPath);
+            }
+            catch { }
+        }
+        if (Department?.DepartmentType?.DepartmentTypeAction == DepartmentTypeAction.IsGallery && IsScriptGalleryLoaded && IsScriptLightBoxLoaded && !IsScriptGalleryPage && GalleryFiles?.Any() == true)
+        {
+            IsScriptGalleryPage = true;
+            try
+            {
+                await _JsRuntime.InvokeAsync<string>("InitializeGalleryPage", TimeSpan.FromSeconds(3), "GalleryPage");
+            }
+            catch { }
+        }
+        if (CanLoadExternalComponents && !IsSetShoppingCartPopupRemember && Department != null)
+        {
+            IsSetShoppingCartPopupRemember = true;
+            try
+            {
+                await _MainApp.DisplayShoppingCarRememberPopup();
+            }
+            catch { }
+        }
+    }
+    /// <summary>
+    /// Load Items to be displayed in diffrent areas
+    /// </summary>
+    async Task LoadZones()
+    {
+        if (ZoneTypeActions?.Count() > 0)
+        {
+            if (!PageState.IsBlazorConnected && !IsRendered && !string.IsNullOrEmpty(thisname) && !string.IsNullOrEmpty(PageState.CacheKeyGuid))
+            {
+                var key = $"{PageState.CacheKeyGuid}{nameof(_ZoneService.GetZonesByTypes)}{thisname}";
+                if (!CachedKeys.Any(p => p == key)) { CachedKeys.Add(key); }
+                Zones = await _MemoryCache.GetOrCreateAsync(key, async entry =>
+                {
+                    entry.SetOptions(new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(4) }.AddExpirationToken(new CancellationChangeToken(new CancellationTokenSource(TimeSpan.FromSeconds(4)).Token)));
+                    return await _ZoneService.GetZonesByTypes(ZoneTypeActions, PageState.CultureID);
+                });
+            }
+            else
+            {
+                Zones = await _ZoneService.GetZonesByTypes(ZoneTypeActions, PageState.CultureID);
+            }
+        }
+    }
+
+    #endregion
+
+    #region Submit Forms
+    /// <summary>
+    /// Send An Backgrould Email to User and Admin and Navigate to Confirmation Page . Invoked when Click Send
+    /// </summary>
+    async Task HandleValidSubmitContactForm()
+    {
+        //try
+        //{
+        //    ReCaptchaTokenContactForm = await _JsRuntime.InvokeAsync<string>("RunReCaptcha", TimeSpan.FromSeconds(3), nameof(DepartmentTypeAction.IsContact), PageState.ReCaptchaSiteKey);
+        //}
+        //catch { }
+
+        if (_EditContextContactFormModel.Validate() && !IsSetReCaptchaScript && !string.IsNullOrEmpty(PageState?.AnonimousIdentityCookie))
+        {
+            IsSetReCaptchaScript = true;
+            var templates = await _EmailTemplateService.GetEmailTemplatesByActionTypes(new List<EmailTemplateTypeAction>() { EmailTemplateTypeAction.IsContactRequest, EmailTemplateTypeAction.IsContactResponse }, PageState.CultureID);
+            var templateRequest = templates?.Where(p => p.EmailTemplateType.EmailTemplateTypeAction == EmailTemplateTypeAction.IsContactRequest)?.FirstOrDefault();
+            var templateResponse = templates?.Where(p => p.EmailTemplateType.EmailTemplateTypeAction == EmailTemplateTypeAction.IsContactResponse)?.FirstOrDefault();
+
+            if (templateRequest != null)
+            {
+                var body = new System.Text.StringBuilder();
+                body.AppendFormat(
+                                    templateRequest.Description,
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Email),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Name),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.PhoneNumber),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Locality),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Company),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Message)
+                                );
+
+                var subject = templateRequest.Title;
+                BackgroundJob.Enqueue(() => _EmailSender.SendEmailToAdminAsync(ContactFormModel.Email, subject, body.ToString()));
+
+            }
+
+            if (templateResponse != null)
+            {
+                var body = new System.Text.StringBuilder();
+                body.AppendFormat(
+                                    templateResponse.Description,
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Email),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Name),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.PhoneNumber),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Locality),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Company),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Message)
+                                );
+
+                var subject = templateResponse.Title;
+                BackgroundJob.Enqueue(() => _EmailSender.SendEmailToUserAsync(ContactFormModel.Email, subject, body.ToString()));
+
+            }
+
+            var confirmationPage = await _Service.GetDepartmentByType(DepartmentTypeAction.IsContactConfirmation, PageState.CultureID);
+            _NavigationManager.NavigateTo(confirmationPage != null ? confirmationPage.HostPath : "/");
+        }
+    }
+    /// <summary>
+    /// Send An Backgrould Email to User and Admin and Navigate to Confirmation Page . Invoked when Click Send
+    /// </summary>
+    async Task HandleValidSubmitRequestOfferForm()
+    {
+        //try
+        //{
+        //    ReCaptchaTokenRequestOfferForm = await _JsRuntime.InvokeAsync<string>("RunReCaptcha", TimeSpan.FromSeconds(3), nameof(DepartmentTypeAction.IsRequestOffer), PageState.ReCaptchaSiteKey);
+        //}
+        //catch { }
+
+        if (_EditContextRequestOfferFormModel.Validate() && !IsSetReCaptchaScriptRequestOffer)
+        {
+            IsSetReCaptchaScriptRequestOffer = true;
+            var templates = await _EmailTemplateService.GetEmailTemplatesByActionTypes(new List<EmailTemplateTypeAction>() { EmailTemplateTypeAction.IsRequestOffer, EmailTemplateTypeAction.IsRequestOfferResponse }, PageState.CultureID);
+            var templateRequest = templates?.Where(p => p.EmailTemplateType.EmailTemplateTypeAction == EmailTemplateTypeAction.IsRequestOffer)?.FirstOrDefault();
+            var templateResponse = templates?.Where(p => p.EmailTemplateType.EmailTemplateTypeAction == EmailTemplateTypeAction.IsRequestOfferResponse)?.FirstOrDefault();
+
+            if (templateRequest != null)
+            {
+                var body = new System.Text.StringBuilder();
+                body.AppendFormat(
+                                    templateRequest.Description,
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Email),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Name),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.PhoneNumber),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Locality),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Company),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Message)
+                                );
+
+                var subject = templateRequest.Title;
+                BackgroundJob.Enqueue(() => _EmailSender.SendEmailToAdminAsync(ContactFormModel.Email, subject, body.ToString()));
+
+            }
+
+            if (templateResponse != null)
+            {
+                var body = new System.Text.StringBuilder();
+                body.AppendFormat(
+                                    templateResponse.Description,
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Email),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Name),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.PhoneNumber),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Locality),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Company),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Message)
+                                );
+
+                var subject = templateResponse.Title;
+                BackgroundJob.Enqueue(() => _EmailSender.SendEmailToUserAsync(ContactFormModel.Email, subject, body.ToString()));
+
+            }
+
+            var confirmationPage = await _Service.GetDepartmentByType(DepartmentTypeAction.IsContactConfirmation, PageState.CultureID);
+            _NavigationManager.NavigateTo(confirmationPage != null ? confirmationPage.HostPath : "/");
+        }
+
+    }
+    /// <summary>
+    /// Send An Backgrould Email to User and Admin and Navigate to Confirmation Page . Invoked when Click Send
+    /// </summary>
+    async Task HandleValidSubmitProductRequestOfferForm()
+    {
+        //try
+        //{
+        //    ReCaptchaTokenProductRequestOfferForm = await _JsRuntime.InvokeAsync<string>("RunReCaptcha", TimeSpan.FromSeconds(3), nameof(DepartmentTypeAction.IsProductRequestOffer), PageState.ReCaptchaSiteKey);
+        //}
+        //catch { }
+
+        if (_EditContextProductRequestOfferFormModel.Validate() && !IsSetReCaptchaScriptProductRequestOffer)
+        {
+            IsSetReCaptchaScriptProductRequestOffer = true;
+            var templates = await _EmailTemplateService.GetEmailTemplatesByActionTypes(new List<EmailTemplateTypeAction>() { EmailTemplateTypeAction.IsProductRequestOffer, EmailTemplateTypeAction.IsRequestOfferResponse }, PageState.CultureID);
+            var templateRequest = templates?.Where(p => p.EmailTemplateType.EmailTemplateTypeAction == EmailTemplateTypeAction.IsProductRequestOffer)?.FirstOrDefault();
+            var templateResponse = templates?.Where(p => p.EmailTemplateType.EmailTemplateTypeAction == EmailTemplateTypeAction.IsProductRequestOfferResponse)?.FirstOrDefault();
+
+            if (templateRequest != null)
+            {
+                var body = new System.Text.StringBuilder();
+                body.AppendFormat(
+                                    templateRequest.Description,
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Email),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Name),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.PhoneNumber),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Locality),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Company),
+                                    Product?.Title,
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Message)
+
+                                );
+
+                var subject = templateRequest.Title;
+                BackgroundJob.Enqueue(() => _EmailSender.SendEmailToAdminAsync(ContactFormModel.Email, subject, body.ToString()));
+
+            }
+
+            if (templateResponse != null)
+            {
+                var body = new System.Text.StringBuilder();
+                body.AppendFormat(
+                                    templateResponse.Description,
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Email),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Name),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.PhoneNumber),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Locality),
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Company),
+                                    Product?.Title,
+                                    System.Net.WebUtility.HtmlEncode(ContactFormModel.Message)
+                                );
+
+                var subject = templateResponse.Title;
+                BackgroundJob.Enqueue(() => _EmailSender.SendEmailToUserAsync(ContactFormModel.Email, subject, body.ToString()));
+
+            }
+
+            var confirmationPage = await _Service.GetDepartmentByType(DepartmentTypeAction.IsContactConfirmation, PageState.CultureID);
+            _NavigationManager.NavigateTo(confirmationPage != null ? confirmationPage.HostPath : "/");
+        }
+
+    }
+
+    /// <summary>
+    /// Send An Backgrould Email to User and Admin and Navigate to Confirmation Page . Invoked when Click Send
+    /// </summary>
+    async Task HandleValidSubmitGiftCardForm()
+    {
+        //try
+        //{
+        //    ReCaptchaTokenGiftCardForm = await _JsRuntime.InvokeAsync<string>("RunReCaptcha", TimeSpan.FromSeconds(3), nameof(DepartmentTypeAction.IsGiftCardRequestOrder), PageState.ReCaptchaSiteKey);
+        //}
+        //catch { }
+
+        if (_EditContextGiftCardFormModel.Validate() && !IsSetReCaptchaScriptGiftCardForm)
+        {
+            IsSetReCaptchaScriptGiftCardForm = true;
+            if (_Settings.Value.HasGiftCardRequestOrder && _Settings.Value.HasShoppingCart)
+            {
+                var item = new ShoppingCartItem();
+                bool isFound = false; string userID = "";
+                Authentication = await _AuthenticationStateTask;
+                if (Authentication.User.Identity.IsAuthenticated)
+                {
+                    var applicationUser = await _ApplicationUserService.GetApplicationUserByUserName(Authentication.User.Identity.Name);
+                    if (applicationUser != null)
+                    {
+                        userID = item.ApplicationUserID = applicationUser.Id;
+                        isFound = true;
+                    }
+                }
+                if (!isFound)
+                {
+                    var anonimousCookie = PageState?.AnonimousIdentityCookie;
+                    if (!string.IsNullOrEmpty(anonimousCookie))
+                    {
+                        userID = item.AnonimousUserID = anonimousCookie;
+                        isFound = true;
+                    }
+                }
+                if (isFound)
+                {
+                    item.GiftCardValueID = GiftCardFormModel.GiftCardValueID;
+                    item.GiftCardTemplateID = GiftCardFormModel.GiftCardTemplateID;
+                    if (await _ShoppingCartService.AddShoppingCartGift(item))
+                    {
+                        //await _MainApp.RefreshShoppingCart(); // no need because first time when Shopping Cart Loads will refresh Shopping Cart Box
+                        var shoppingCartPage = await _HostPageService.GetHostPageByActionType(HostPageActionType.IsShoppingCartPage, PageState.CultureID);
+                        _NavigationManager.NavigateTo(shoppingCartPage != null ? shoppingCartPage.HostPath : "/");
+                    }
+                    else
+                    {
+                        //  IsSetReCaptchaScriptGiftCardForm = false;
+                    }
+                }
+
+            }
+            else
+            {
+                var templates = await _EmailTemplateService.GetEmailTemplatesByActionTypes(new List<EmailTemplateTypeAction>() { EmailTemplateTypeAction.IsGiftCardRequestOffer, EmailTemplateTypeAction.IsGiftCardRequestOfferResponse }, PageState.CultureID);
+                var templateRequest = templates?.Where(p => p.EmailTemplateType.EmailTemplateTypeAction == EmailTemplateTypeAction.IsGiftCardRequestOffer)?.FirstOrDefault();
+                var templateResponse = templates?.Where(p => p.EmailTemplateType.EmailTemplateTypeAction == EmailTemplateTypeAction.IsGiftCardRequestOfferResponse)?.FirstOrDefault();
+
+                if (templateRequest != null)
+                {
+                    var body = new System.Text.StringBuilder();
+                    body.AppendFormat(
+                                        templateRequest.Description,
+                                        System.Net.WebUtility.HtmlEncode(ContactFormModel.Email),
+                                        System.Net.WebUtility.HtmlEncode(ContactFormModel.Name),
+                                        System.Net.WebUtility.HtmlEncode(ContactFormModel.PhoneNumber),
+                                        GiftCardValues?.FirstOrDefault(p => p.GiftCardValueID == GiftCardFormModel.GiftCardValueID)?.Title,
+                                        GiftCardTemplates?.FirstOrDefault(p => p.GiftCardTemplateID == GiftCardFormModel.GiftCardTemplateID)?.Title,
+                                        System.Net.WebUtility.HtmlEncode(ContactFormModel.Message)
+                                    );
+
+                    var subject = templateRequest.Title;
+                    BackgroundJob.Enqueue(() => _EmailSender.SendEmailToAdminAsync(ContactFormModel.Email, subject, body.ToString()));
+
+                }
+
+                if (templateResponse != null)
+                {
+                    var body = new System.Text.StringBuilder();
+                    body.AppendFormat(
+                                         templateRequest.Description,
+                                         System.Net.WebUtility.HtmlEncode(ContactFormModel.Email),
+                                         System.Net.WebUtility.HtmlEncode(ContactFormModel.Name),
+                                         System.Net.WebUtility.HtmlEncode(ContactFormModel.PhoneNumber),
+                                         GiftCardValues?.FirstOrDefault(p => p.GiftCardValueID == GiftCardFormModel.GiftCardValueID)?.Title,
+                                         GiftCardTemplates?.FirstOrDefault(p => p.GiftCardTemplateID == GiftCardFormModel.GiftCardTemplateID)?.Title,
+                                         System.Net.WebUtility.HtmlEncode(ContactFormModel.Message)
+                                     );
+
+                    var subject = templateResponse.Title;
+                    BackgroundJob.Enqueue(() => _EmailSender.SendEmailToUserAsync(ContactFormModel.Email, subject, body.ToString()));
+
+                }
+
+                var confirmationPage = await _Service.GetDepartmentByType(DepartmentTypeAction.IsGiftCardRequestOffer, PageState.CultureID);
+                _NavigationManager.NavigateTo(confirmationPage != null ? confirmationPage.HostPath : "/");
+            }
+        }
+
+    }
+
+    /// <summary>
+    /// Send An Backgrould Email to User and Admin and Navigate to Confirmation Page . Invoked when Click Send
+    /// </summary>
+    async Task HandleValidSubmitFeedbackFormModel()
+    {
+        //try
+        //{
+        //    ReCaptchaTokenFeedbackForm = await _JsRuntime.InvokeAsync<string>("RunReCaptcha", TimeSpan.FromSeconds(3), nameof(DepartmentTypeAction.IsFeedBack), PageState.ReCaptchaSiteKey);
+        //}
+        //catch { }
+
+        if (_EditContextFeedbackFormModel.Validate() && !IsSetReCaptchaScriptFeedbackForm)
+        {
+            IsSetReCaptchaScriptFeedbackForm = true;
+            var templates = await _EmailTemplateService.GetEmailTemplatesByActionTypes(new List<EmailTemplateTypeAction>() { EmailTemplateTypeAction.IsFeedbackForm, EmailTemplateTypeAction.IsFeedbackResponseForm, EmailTemplateTypeAction.IsFeedbackOrderForm, EmailTemplateTypeAction.IsFeedbackOrderResponseForm }, PageState.CultureID);
+            var templateRequest = Order != null ? templates?.Where(p => p.EmailTemplateType.EmailTemplateTypeAction == EmailTemplateTypeAction.IsFeedbackOrderForm)?.FirstOrDefault() :
+                                                  templates?.Where(p => p.EmailTemplateType.EmailTemplateTypeAction == EmailTemplateTypeAction.IsFeedbackForm)?.FirstOrDefault();
+            var templateResponse = Order != null ? templates?.Where(p => p.EmailTemplateType.EmailTemplateTypeAction == EmailTemplateTypeAction.IsFeedbackOrderResponseForm)?.FirstOrDefault() :
+                                                   templates?.Where(p => p.EmailTemplateType.EmailTemplateTypeAction == EmailTemplateTypeAction.IsFeedbackResponseForm)?.FirstOrDefault();
+
+            var formEmailTemplate = new StringBuilder();
+
+            formEmailTemplate.Append("<table style='width: 100%'><tr><th>").Append(_SharedResource["Question"]).Append("</th><th>").Append(_SharedResource["Answer"]).Append("</th></tr>");
+            foreach (var item in FeedbackQuestions ?? new List<FeedbackQuestion>())
+            {
+                formEmailTemplate.Append("<tr><td align='center'>").Append(item.Question).Append("</td>").Append("<td align='center'>");
+
+                if (item.FeedbackAnswerType.FeedbackAnswerTypeAction == FeedbackAnswerTypeAction.IsSingleLine || item.FeedbackAnswerType.FeedbackAnswerTypeAction == FeedbackAnswerTypeAction.IsTextArea)
+                {
+                    formEmailTemplate.Append(System.Net.WebUtility.HtmlEncode(item.Title));
+                }
+                else if (item.FeedbackAnswerType.FeedbackAnswerTypeAction == FeedbackAnswerTypeAction.IsRadio)
+                {
+                    var answer = item.FeedbackAnswers.FirstOrDefault(p => p.FeedbackAnswerID == item.SelectedAnswerID);
+                    if (answer != null)
+                    {
+                        formEmailTemplate.Append(System.Net.WebUtility.HtmlEncode(answer.Answer));
+                    }
+                }
+                else if (item.FeedbackAnswerType.FeedbackAnswerTypeAction == FeedbackAnswerTypeAction.IsCheckbox)
+                {
+                    var answers = item.FeedbackAnswers.Where(p => p.IsSelected);
+                    if (answers?.Any() == true)
+                    {
+                        formEmailTemplate.Append(System.Net.WebUtility.HtmlEncode(string.Join(",", answers.Select(p => p.Answer))));
+                    }
+                }
+                formEmailTemplate.Append("</td></tr>");
+            }
+            formEmailTemplate.Append("</table>");
+            if (templateRequest != null)
+            {
+                var body = new System.Text.StringBuilder();
+                if (Order != null)
+                {
+                    body.AppendFormat(
+                                        templateRequest.Description,
+                                        System.Net.WebUtility.HtmlEncode(FeedbackFormModel.Email),
+                                        System.Net.WebUtility.HtmlEncode(FeedbackFormModel.Name),
+                                        System.Net.WebUtility.HtmlEncode(FeedbackFormModel.Phone),
+                                        System.Net.WebUtility.HtmlEncode(FeedbackFormModel.Message),
+                                        Order.OrderID + "/" + Order.Inserted.ToShortDateString(),
+                                        formEmailTemplate.ToString()
+                                    );
+                }
+                else
+                {
+                    body.AppendFormat(
+                                        templateRequest.Description,
+                                        System.Net.WebUtility.HtmlEncode(FeedbackFormModel.Email),
+                                        System.Net.WebUtility.HtmlEncode(FeedbackFormModel.Name),
+                                        System.Net.WebUtility.HtmlEncode(FeedbackFormModel.Phone),
+                                        System.Net.WebUtility.HtmlEncode(FeedbackFormModel.Message),
+                                        formEmailTemplate.ToString()
+                                    );
+                }
+
+                var subject = templateRequest.Title;
+                BackgroundJob.Enqueue(() => _EmailSender.SendEmailToAdminAsync(FeedbackFormModel.Email, subject, body.ToString()));
+
+            }
+
+            if (templateResponse != null)
+            {
+                var body = new System.Text.StringBuilder();
+                if (Order != null)
+                {
+                    body.AppendFormat(
+                                        templateResponse.Description,
+                                        System.Net.WebUtility.HtmlEncode(FeedbackFormModel.Email),
+                                        System.Net.WebUtility.HtmlEncode(FeedbackFormModel.Name),
+                                        System.Net.WebUtility.HtmlEncode(FeedbackFormModel.Phone),
+                                        System.Net.WebUtility.HtmlEncode(FeedbackFormModel.Message),
+                                        Order.OrderID + "/" + Order.Inserted.ToShortDateString(),
+                                        formEmailTemplate.ToString()
+                                      );
+                }
+                else
+                {
+                    body.AppendFormat(
+                                      templateResponse.Description,
+                                      System.Net.WebUtility.HtmlEncode(FeedbackFormModel.Email),
+                                      System.Net.WebUtility.HtmlEncode(FeedbackFormModel.Name),
+                                      System.Net.WebUtility.HtmlEncode(FeedbackFormModel.Phone),
+                                      System.Net.WebUtility.HtmlEncode(FeedbackFormModel.Message),
+                                      formEmailTemplate.ToString()
+                                      );
+                }
+
+                var subject = templateResponse.Title;
+                BackgroundJob.Enqueue(() => _EmailSender.SendEmailToUserAsync(FeedbackFormModel.Email, subject, body.ToString()));
+
+            }
+
+            var confirmationPage = await _Service.GetDepartmentByType(DepartmentTypeAction.IsFeedBackConfirmation, PageState.CultureID);
+            _NavigationManager.NavigateTo(confirmationPage != null ? confirmationPage.HostPath : "/");
+        }
+
+    }
+    #endregion
+    void ClearMemoryCache(bool initializeList)
+    {
+        foreach (var key in CachedKeys ?? new List<string>())
+        {
+            try
+            {
+                _MemoryCache.Remove(key);
+            }
+            catch { }
+        }
+        if (initializeList)
+        {
+            CachedKeys = new List<string>();
+        }
+    }
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_Disposed)
+        {
+            return;
+        }
+
+        if (disposing)
+        {
+
+        }
+
+        _Disposed = true;
+    }
+    public void Dispose()
+    {
+        Dispose(true);
+        // GC.SuppressFinalize(this);
+    }
+}
